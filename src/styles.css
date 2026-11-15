@@ -1,13 +1,550 @@
-/* Placeholder styles. The graveyard design system replaces this in FEAT-004. */
-:root {
-  color-scheme: dark;
-  background: #0b1020;
-  color: #e8e6f0;
-  font-family: system-ui, sans-serif;
+/* Deadline Graveyard design system. Rules: .kiro/steering/graveyard-design.md
+   Palette and type steps are mirrored in src/ui/tokens.ts (tokens.test.ts checks they match). */
+
+@font-face {
+  font-family: 'IM Fell English';
+  src: url('/fonts/im-fell-english-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  src: url('/fonts/atkinson-hyperlegible-next-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  src: url('/fonts/atkinson-hyperlegible-next-latin-700-normal.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Palette */
+  --night-900: #0b1020;
+  --night-800: #141a2e;
+  --night-700: #1f2742;
+  --moon-100: #eef1f8;
+  --mist-300: #aeb8d0;
+  --lantern-300: #ffd98a;
+  --candle-400: #f5b84a;
+  --ghost-200: #c9e4ff;
+  --ember-400: #ff8a66;
+  --moss-400: #7fd1a3;
+  --stone-400: #8790ad;
+  --stone-500: #6b7390;
+
+  /* Type scale: ratio 1.25, base 1.125 rem. Large steps clamp down on narrow screens. */
+  --step--1: 0.9rem;
+  --step-0: 1.125rem;
+  --step-1: 1.406rem;
+  --step-2: 1.758rem;
+  --step-3: clamp(1.758rem, 1.4rem + 1.2vw, 2.197rem);
+  --step-4: clamp(2.197rem, 1.7rem + 1.8vw, 2.747rem);
+  --step-5: clamp(2.747rem, 2rem + 2.6vw, 3.433rem);
+
+  --font-display: 'IM Fell English', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-body: 'Atkinson Hyperlegible Next', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --radius: 0.5rem;
+
+  /* Focus ring: 2 px lantern-300 with a 2 px night-900 offset (R2.6). */
+  --focus-ring: 0 0 0 2px var(--night-900), 0 0 0 4px var(--lantern-300);
+
+  color-scheme: dark;
+  background: var(--night-900);
+  color: var(--moon-100);
+  font-family: var(--font-body);
+  font-size: 100%;
+  line-height: 1.5;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-size: var(--step-0);
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.15;
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--step-4);
+}
+
+h2 {
+  font-size: var(--step-3);
+}
+
+h3 {
+  font-size: var(--step-2);
+}
+
+a {
+  color: var(--ghost-200);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 2px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: -10rem;
+  z-index: 10;
+  padding: var(--space-2) var(--space-4);
+  background: var(--candle-400);
+  color: var(--night-900);
+  font-weight: 700;
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+/* Header */
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--night-800);
+  border-bottom: 1px solid var(--night-700);
+}
+
+.app-header p {
+  margin: 0;
+  color: var(--mist-300);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--stone-400);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.segmented button {
+  border: 0;
+  border-radius: 0;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--moon-100);
+  color: var(--night-900);
+}
+
+/* Buttons */
+
+.btn {
+  font: inherit;
+  font-size: var(--step-0);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid var(--stone-400);
+  background: var(--night-700);
+  color: var(--moon-100);
+  cursor: pointer;
+}
+
+.btn:hover {
+  border-color: var(--mist-300);
+}
+
+.btn-primary {
+  background: var(--candle-400);
+  border-color: var(--candle-400);
+  color: var(--night-900);
+  font-weight: 700;
+}
+
+.btn-primary:hover {
+  background: var(--lantern-300);
+}
+
+.btn-danger {
+  border-color: var(--ember-400);
+  color: var(--ember-400);
+}
+
+.btn-small {
+  min-height: 2.75rem;
+  padding: var(--space-1) var(--space-3);
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.switch[aria-checked='true'] .switch-track {
+  background: var(--candle-400);
+}
+
+.switch-track {
+  display: inline-block;
+  width: 2.25rem;
+  height: 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid var(--stone-400);
+  background: var(--night-900);
+  position: relative;
+}
+
+.switch-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: var(--moon-100);
+}
+
+.switch[aria-checked='true'] .switch-track::after {
+  left: auto;
+  right: 2px;
+  background: var(--night-900);
+}
+
+/* Layout */
+
 main {
-  max-width: 40rem;
-  margin: 4rem auto;
-  padding: 0 1.5rem;
+  display: block;
+}
+
+.notice {
+  margin: var(--space-4) var(--space-5) 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--ember-400);
+  border-radius: var(--radius);
+  background: var(--night-800);
+}
+
+/* Scene */
+
+.scene-wrap {
+  overflow-x: auto;
+  background: var(--night-900);
+  scrollbar-color: var(--stone-400) var(--night-800);
+}
+
+.scene {
+  display: block;
+  width: 100%;
+  min-width: 960px;
+  height: auto;
+}
+
+.scene-hint {
+  display: none;
+  margin: var(--space-2) var(--space-5);
+  color: var(--mist-300);
+  font-size: var(--step--1);
+}
+
+@media (max-width: 960px) {
+  .scene-hint {
+    display: block;
+  }
+}
+
+.scene-item {
+  cursor: pointer;
+  outline: none;
+}
+
+.scene-item .focus-ring {
+  opacity: 0;
+}
+
+.scene-item:focus-visible .focus-ring,
+.scene-item:hover .focus-ring {
+  opacity: 1;
+}
+
+.scene-item:focus-visible {
+  box-shadow: none;
+}
+
+.scene-label {
+  font-family: var(--font-body);
+  font-size: 20px;
+  fill: var(--moon-100);
+}
+
+.scene-small {
+  font-family: var(--font-body);
+  font-size: 16px;
+  fill: var(--moon-100);
+}
+
+.scene-engraving {
+  font-family: var(--font-display);
+  font-size: 17px;
+  fill: var(--moon-100);
+}
+
+/* List view */
+
+.list-view {
+  padding: var(--space-5);
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.list-view > h2:focus {
+  outline: none;
+}
+
+.list-view > p {
+  color: var(--mist-300);
+}
+
+.group {
+  margin-top: var(--space-6);
+}
+
+.group h3 {
+  font-family: var(--font-body);
+  font-size: var(--step-1);
+  font-weight: 700;
+  color: var(--mist-300);
+  border-bottom: 1px solid var(--night-700);
+  padding-bottom: var(--space-2);
+}
+
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.entry {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  margin-top: var(--space-3);
+  background: var(--night-800);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--stone-400);
+}
+
+.entry[data-status='due-soon'],
+.entry[data-status='missed'] {
+  border-left-color: var(--ember-400);
+}
+
+.entry[data-status='active'] {
+  border-left-color: var(--candle-400);
+}
+
+.entry[data-status='submitted'] {
+  border-left-color: var(--lantern-300);
+}
+
+.entry[data-status='ghost'] {
+  border-left-color: var(--ghost-200);
+}
+
+.entry-title {
+  font-size: var(--step-1);
+  font-weight: 700;
+  margin: 0;
+}
+
+.entry-meta {
+  margin: 0;
+  color: var(--mist-300);
+}
+
+.entry-status {
+  color: var(--moon-100);
+  font-weight: 700;
+}
+
+.entry-status[data-status='due-soon'],
+.entry-status[data-status='missed'] {
+  color: var(--ember-400);
+}
+
+.epitaph {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  color: var(--moon-100);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.badge-demo {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: var(--night-900);
+  background: var(--ghost-200);
+  border-radius: var(--radius);
+  vertical-align: middle;
+}
+
+.empty {
+  color: var(--mist-300);
+}
+
+/* Dialogs */
+
+dialog.panel {
+  width: min(36rem, calc(100vw - 2rem));
+  padding: var(--space-5);
+  border: 1px solid var(--stone-400);
+  border-radius: var(--radius);
+  background: var(--night-800);
+  color: var(--moon-100);
+}
+
+dialog.panel::backdrop {
+  background: rgb(11 16 32 / 80%);
+}
+
+dialog.panel h2 {
+  font-size: var(--step-2);
+  margin-bottom: var(--space-3);
+}
+
+.panel-close {
+  float: right;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.field label,
+.field legend {
+  font-weight: 700;
+}
+
+.field .hint {
+  color: var(--mist-300);
+  font-size: var(--step--1);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  font-size: var(--step-0);
+  color: var(--moon-100);
+  background: var(--night-900);
+  border: 1px solid var(--stone-400);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  min-height: 2.75rem;
+}
+
+input[type='checkbox'] {
+  min-height: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--candle-400);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.error {
+  color: var(--ember-400);
+  margin: 0;
+}
+
+.success {
+  color: var(--moss-400);
+  margin: 0;
+}
+
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.footer {
+  padding: var(--space-5);
+  color: var(--mist-300);
+  font-size: var(--step--1);
+  text-align: center;
 }

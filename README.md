@@ -96,7 +96,23 @@ Third-party libraries used, as listed in `package.json`:
 | [typescript-eslint](https://typescript-eslint.io) | 8.72.2 | MIT | TypeScript rules for ESLint |
 | [globals](https://github.com/sindresorhus/globals) | 17.14.0 | MIT | Browser and Node global definitions for ESLint |
 
-Fonts and sounds: none added yet. The design steering picks two SIL Open Font License fonts, IM Fell English and Atkinson Hyperlegible Next; they will be listed here with their source when they are added. Sounds will be synthesised in the browser, so there are no audio files to license.
+GSAP license, checked on 15 Nov 2026 at [gsap.com/standard-license](https://gsap.com/standard-license) (effective 30 Apr 2025): use on any website or web application is a "Permitted Use" at no charge, including commercial use. The only prohibited use is building a visual no-code animation tool that competes with Webflow, which this app is not. GSAP's own notices are left in place. This is not an OSI license, so it is listed here separately from the MIT code of this repo.
+
+### Fonts
+
+Self-hosted from `public/fonts/` (Latin subset, WOFF2). The license texts are next to the files.
+
+| Font | Designer | License | Files | Source |
+|---|---|---|---|---|
+| IM Fell English (regular) | Igino Marini | SIL Open Font License 1.1 ([OFL-IMFellEnglish.txt](public/fonts/OFL-IMFellEnglish.txt), from [google/fonts](https://github.com/google/fonts/tree/main/ofl/imfellenglish)) | `im-fell-english-latin-400-normal.woff2` | WOFF2 from [@fontsource/im-fell-english 5.3.0](https://www.npmjs.com/package/@fontsource/im-fell-english) via jsDelivr |
+| Atkinson Hyperlegible Next (400, 700) | Braille Institute of America | SIL Open Font License 1.1 ([OFL-AtkinsonHyperlegibleNext.txt](public/fonts/OFL-AtkinsonHyperlegibleNext.txt), from [google/fonts](https://github.com/google/fonts/tree/main/ofl/atkinsonhyperlegiblenext)) | `atkinson-hyperlegible-next-latin-{400,700}-normal.woff2` | WOFF2 from [@fontsource/atkinson-hyperlegible-next 5.3.0](https://www.npmjs.com/package/@fontsource/atkinson-hyperlegible-next) via jsDelivr |
+
+The Fontsource packages are not dependencies; only the three font files were copied in.
+
+### Sounds and artwork
+
+- Sounds: none recorded. Wind and the lantern chime are synthesised at runtime with the Web Audio API (`src/scene/sound.ts`), so there are no audio files to license.
+- Artwork: every scene shape (sky, moon, hills, fence, fog, candles, tombstones, lanterns, ghosts) is hand-written SVG in `src/scene/`. No icon set, illustration or image file is used.
 
 ### Development tools used through Kiro (not app dependencies)
 
@@ -107,7 +123,7 @@ Fonts and sounds: none added yet. The design steering picks two SIL Open Font Li
 
 ## Project status
 
-Spec phase done: steering, feature specs, hooks, custom agents and MCP config are in `.kiro/`. The deadline engine (`src/domain/`, pure state machine, timezones and DST, with fast-check property tests) and offline storage (`src/storage/`, IndexedDB with JSON backup and restore) are implemented and tested. The app UI is still a placeholder page. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
+Spec phase done: steering, feature specs, hooks, custom agents and MCP config are in `.kiro/`. The deadline engine (`src/domain/`, pure state machine, timezones and DST, with fast-check property tests) and offline storage (`src/storage/`, IndexedDB with JSON backup and restore) are implemented and tested. The graveyard scene (SVG, GSAP motion with reduced-motion support, optional synthesised sound) and the screen-reader list view with keyboard navigation, add and edit form and detail dialog are implemented and persist to IndexedDB. Demo data, add from URL, `.ics` export, notifications and the Seance are not built yet. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
 
 ## License
 
