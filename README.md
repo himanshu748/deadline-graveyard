@@ -43,6 +43,23 @@ npx playwright install chromium   # once, before the first e2e run
 npm run test:e2e   # Playwright end-to-end tests with axe accessibility checks
 ```
 
+### Kiro hook scripts
+
+The hooks in `.kiro/hooks/` call Node scripts in `scripts/hooks/` that also run on their own. Their pure logic is unit-tested by `npm test` (`tests/hooks/`).
+
+```sh
+# commit guard: exit 2 blocks, exit 0 allows (add --static-only to skip typecheck/lint/test)
+echo '{"hook_event_name":"PreToolUse","tool_name":"execute_bash","tool_input":{"command":"git commit -m x"}}' \
+  | node scripts/hooks/commit-guard.mjs; echo $?
+
+# tests on save: runs vitest related for one file
+node scripts/hooks/tests-on-save.mjs src/ui/App.tsx
+
+# audit after build: prints a notice until scripts/audit.mjs exists
+echo '{"tool_name":"execute_bash","tool_input":{"command":"npm run build"}}' \
+  | node scripts/hooks/a11y-lighthouse-on-build.mjs
+```
+
 ## Pre-existing work
 
 The project scaffold (package.json, tsconfig, Vite, Vitest, ESLint and Playwright configs, index.html) was written by hand for this project. No starter template or project generator was used.
@@ -78,11 +95,18 @@ Third-party libraries used, as listed in `package.json`:
 | [typescript-eslint](https://typescript-eslint.io) | 8.72.2 | MIT | TypeScript rules for ESLint |
 | [globals](https://github.com/sindresorhus/globals) | 17.14.0 | MIT | Browser and Node global definitions for ESLint |
 
-Fonts and sounds: none yet. Every font and sound source will be listed here with its license when added.
+Fonts and sounds: none added yet. The design steering picks two SIL Open Font License fonts, IM Fell English and Atkinson Hyperlegible Next; they will be listed here with their source when they are added. Sounds will be synthesised in the browser, so there are no audio files to license.
+
+### Development tools used through Kiro (not app dependencies)
+
+| Tool | Version | License | Purpose |
+|---|---|---|---|
+| [Playwright MCP](https://github.com/microsoft/playwright-mcp) (`@playwright/mcp`) | 0.0.85, run with npx | Apache-2.0 | Browser automation for the design-review agent |
+| [Context7](https://context7.com) remote MCP server | hosted service | Server package MIT; service used on its free keyless access | Library docs lookup for confirming APIs |
 
 ## Project status
 
-Scaffold only. The page shows a placeholder heading. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
+Spec phase done: steering, feature specs, hooks, custom agents and MCP config are in `.kiro/`. The app itself is still a placeholder page; implementation starts with the deadline engine. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
 
 ## License
 
