@@ -31,7 +31,7 @@ Source: [Kiroween 2026 Official Rules](https://kiroween.devpost.com/rules), read
 - **Submission period:** 30 Oct 2026, 9:00 AM PT to 4 Dec 2026, 2:00 PM PT. All work must be built inside it. This repo's first commit is dated 15 Nov 2026, so the history fits.
 - **Pre-existing work:** frameworks, libraries and starter templates are allowed but must be disclosed. README will have a "Pre-existing work" section listing every dependency, font and sound source.
 - **Repo:** public GitHub (not GitLab/Bitbucket), an open-source license detectable in the About section, and `/.kiro` at the repo root. Adding `/.kiro` or any sub-folder to `.gitignore` "could disqualify your submission".
-- **Working app URL** is required, free of charge and unrestricted for judges until the judging period ends (29 Jan 2027). Hosting must therefore stay up until then.
+- **Working app URL** is required, free of charge and unrestricted for judges until the judging period ends (29 Jan 2027). Hosting must therefore stay up until then. **Decided:** Vercel free tier (section 5), deployed only when you say go.
 - **Video:** under 3 minutes, real footage of the app running, public on YouTube, no third-party trademarks or copyrighted music without permission.
 - **Kiro write-up questions** (KIRO_USAGE.md must answer all of them): Kiro IDE/CLI/Web/Crew and how they differed, custom agents, agent hooks, spec-driven vs vibe coding, steering strategy, MCP, property-based testing, Kiro powers.
 - **Judging:** Stage One is pass/fail on theme fit and "insufficient use of Kiro" can disqualify. Stage Two is 5 criteria at 20% each (table in section 4).
@@ -40,7 +40,7 @@ Source: [Kiroween 2026 Official Rules](https://kiroween.devpost.com/rules), read
 - **Best Demo:** awarded on the Presentation score, but only among submissions in the top 10% overall. Every criterion matters for it.
 - **Bonus Blog:** published publicly during the submission period on a third-party platform, must say it was written as part of the Kiroween 2026 hackathon.
 - **Social Blitz:** the post must start with `#KiroweenHackathon26`, be posted during the submission period, and share your favourite thing about Kiro and how it changed your approach. Judged partly on "original thoughts vs AI writing", which is why that part stays a TODO for you.
-- **Kiro credits:** up to 4,000 credits via the Credit Request Form. Request deadline 1 Dec 2026, 12:00 PM PT; redeem by 4 Dec.
+- **Kiro credits:** up to 4,000 credits via the Credit Request Form. Request deadline 1 Dec 2026, 12:00 PM PT; redeem by 4 Dec. **Status:** you have already received your credits, so no action is pending.
 - **Eligibility:** age of majority where you live. India is not on the excluded list.
 - **Multiple submissions** are allowed only if each is "substantially different". I found earlier plan folders for other Kiroween ideas in `.agents/tasks/` (Stitchform, Fagan's Ghost). If you enter more than one, they must stay distinct.
 
@@ -65,7 +65,7 @@ Each feature is listed under the one criterion it mainly serves.
 |---|---|---|---|
 | F1 | Deadline engine: state machine (active, due-soon, missed, submitted), ghost/abandoned rule, timezone and DST handling | **Potential Impact** | The core problem: "what is due, when, in my timezone". Correctness here is what makes it usable. |
 | F2 | Offline-first storage (IndexedDB) with JSON backup/restore | **Potential Impact** | Works without an account or network, so judges and real users can use it immediately. |
-| F3 | Add from URL (page metadata extraction, manual fallback) | **Potential Impact** | Removes the friction of retyping hackathon deadlines. |
+| F3 | Add from URL (page metadata extraction via a Vercel function, manual fallback) | **Potential Impact** | Removes the friction of retyping hackathon deadlines. |
 | F4 | `.ics` export | **Potential Impact** | Plays well with calendars people already use. |
 | F5 | Browser notifications (opt-in) | **Potential Impact** | Reminders before a candle burns out. |
 | F6 | Moonlit graveyard scene: SVG layers, parallax, fog, candles, tombstones, lanterns, ghosts | **Design** | The category is judged on the UI. One art direction, every element encodes state. |
@@ -86,7 +86,7 @@ All choices below get confirmed against official docs during the spec phase (thr
 
 ### Stack (proposed)
 
-- **Vite + TypeScript**, static single-page app. No server required for the core experience.
+- **Vite + TypeScript**, static single-page app hosted on Vercel free tier. No server required for the core experience; the only server code is the optional URL-fetch Vercel function (F3).
 - **UI layer:** Preact (small, React-style components) for panels, forms and the list view. The scene itself is hand-written SVG driven by the same state. Alternative: Svelte. See open questions.
 - **Motion:** GSAP. Every timeline checks `prefers-reduced-motion` and a manual "reduce motion" toggle; reduced mode swaps animation for static states and opacity changes.
 - **Time:** Luxon or the Temporal polyfill for IANA timezones and DST. Picked in the spec phase after checking docs. All instants stored as UTC epoch milliseconds plus the source IANA zone.
@@ -118,7 +118,7 @@ Properties to test with fast-check (generated instants, IANA zones, and DST-boun
 Browsers block cross-origin page reads (CORS), so the static app cannot fetch arbitrary pages directly. Plan:
 - A pure, tested extractor reads `<title>`, Open Graph tags and schema.org JSON-LD `Event` dates from HTML.
 - In local dev, a Vite dev-server proxy fetches the page.
-- When hosted, a single free-tier serverless function does the fetch (provider picked when you say go). If no function is deployed, the app offers "paste page text" plus manual entry. The manual path always works.
+- When hosted, a single Vercel function (free tier, under `api/`) does the fetch, deployed together with the static app. It accepts only `http`/`https` URLs, rejects private and loopback addresses, caps response size and timeout, and returns only the extracted fields. Exact Vercel function APIs and free-tier limits get confirmed in official docs during the spec phase. If the function fails or is unavailable, the app offers "paste page text" plus manual entry. The manual path always works.
 - Optional LLM extraction for messy pages goes through the LLM adapter below.
 
 ### LLM adapter (optional, never required)
@@ -227,21 +227,21 @@ Every task ends with a commit. Nothing is pushed, deployed, posted or submitted 
 | 1. Spec | 16 to 18 Nov | `.gitignore`, LICENSE, steering (4+1 files), hooks (with the ACP smoke test), custom agents, MCP config, all specs with EARS requirements, designs and tasks. **IDE step:** spec correctness for deadline-engine. |
 | 2. Implementation | 19 to 28 Nov | deadline-engine and storage (19 to 21), graveyard scene and design system (22 to 25), accessible list view and keyboard nav (25), capture and export and notifications (26), Séance (27), first visit (28). |
 | 3. Tests | alongside phase 2, hardening 29 Nov | Unit, property-based and end-to-end tests; axe and Lighthouse runs recorded. |
-| 4. Polish | 29 Nov to 1 Dec | design-review agent passes, reduced-motion pass, performance. **1 Dec 12:00 PM PT (1 Dec 01:30 IST): Kiro credit request deadline**, if you have not requested credits yet. |
+| 4. Polish | 29 Nov to 1 Dec | design-review agent passes, reduced-motion pass, performance. (Kiro credits already received, so the 1 Dec credit request deadline needs no action.) |
 | 5. Docs | 1 to 2 Dec | README, KIRO_USAGE, DEVPOST_STORY, VIDEO_SHOTLIST, BLOG_DRAFT, SOCIAL_POST, SUBMISSION_CHECKLIST. |
-| 6. Your steps | 2 to 4 Dec | You approve hosting, record the video, publish blog and social post, fill the Devpost form. I prepare everything; you submit. |
+| 6. Your steps | 2 to 4 Dec | You say go for the Vercel deploy (and log in to Vercel yourself), record the video, publish blog and social post, fill the Devpost form. I prepare everything; you submit. |
 
 F15 (sync) is attempted only if phases 2 to 4 finish early.
 
 ## 8. Deliverables
 
-- **README.md**: what it is, who it is for, how to run, how to test, working app URL placeholder, "Pre-existing work" section.
+- **README.md**: what it is, who it is for, how to run, how to test, working app URL placeholder (Vercel), how to run the URL-fetch function locally, "Pre-existing work" section.
 - **KIRO_USAGE.md**: every write-up question from the rules, honest scores.
 - **DEVPOST_STORY.md**: honest story, demo data labelled as demo data, no invented users or stats.
 - **VIDEO_SHOTLIST.md**: under 3:00, real footage, no copyrighted music.
 - **BLOG_DRAFT.md**: states it was written for the Kiroween 2026 hackathon.
 - **SOCIAL_POST.md**: starts with `#KiroweenHackathon26`; your favourite thing about Kiro left as a TODO for you.
-- **SUBMISSION_CHECKLIST.md**: Costume Contest, Best Student Project (Costume Contest) details to provide, Best Demo, Bonus Blog, Social Blitz, credits deadline, and everything from section 2.
+- **SUBMISSION_CHECKLIST.md**: Costume Contest, Best Student Project (Costume Contest) details to provide, Best Demo, Bonus Blog, Social Blitz, Kiro credits (already received), Vercel deployment kept reachable for judges until 29 Jan 2027, and everything from section 2.
 - **LICENSE**: OSI license (MIT proposed).
 
 ## 9. Guardrails
@@ -251,16 +251,16 @@ F15 (sync) is attempted only if phases 2 to 4 finish early.
 - Demo data is labelled "Demo" in the UI, in exports and in the video.
 - No fabricated users, stats or testimonials anywhere.
 - Every API confirmed in official docs before use.
-- Any login (GitHub, AWS, hosting) stops work and I hand you the exact command.
+- Any login (GitHub, AWS, Vercel) stops work and I hand you the exact command.
 
 ## 10. Open questions for you
 
 1. **Repo location:** OK with the dedicated `deadline-graveyard/` repo (section 3)? If yes, please add that folder as its own T3 Code project so Kiro sessions start there, or tell me if you prefer it somewhere else.
 2. **License:** MIT, or Apache-2.0?
 3. **UI layer:** Preact (proposed) or Svelte?
-4. **Hosting when you say go:** GitHub Pages (static only, add-from-URL falls back to paste/manual) or Netlify/Vercel free tier (adds the one fetch function)?
+4. ~~**Hosting when you say go:**~~ **Resolved:** Vercel free tier, with the URL-fetch Vercel function. Deploy still waits for your go, and it must stay up until 29 Jan 2027.
 5. **Sync:** keep it as a stretch goal, or drop it and ship "none plus JSON export"?
 6. **Student details:** you will need your LinkedIn, student email, year, degree and school for Best Student. Do you have all of these, and is everyone on the team a student?
-7. **Kiro credits:** have you already requested the 4,000 hackathon credits? The form closes 1 Dec, 12:00 PM PT.
-8. **Kiroween 2025:** did you register for Kiroween 2025? If so, Best Ghost of Kiroween Past is also open to you.
+7. ~~**Kiro credits:**~~ **Resolved:** you have already received your credits.
+8. ~~**Kiroween 2025:**~~ **Resolved:** you did not register for Kiroween 2025, so Best Ghost of Kiroween Past is not targeted.
 9. **Other entries:** are you also submitting Stitchform or Fagan's Ghost? They must stay substantially different from this one.
