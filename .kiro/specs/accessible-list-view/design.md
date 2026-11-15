@@ -28,8 +28,10 @@ interface ViewEntry {
   sourceDueText?: string;       // when zone differs
   epitaph?: string;
   demo: boolean;
+  relativeText: string;         // coarse '2 days left', changes at most hourly, not in the accessible name (R3.3)
+  dateOnly: boolean;
   actions: Array<'submit' | 'revive' | 'bury' | 'edit' | 'epitaph'>;
-  accessibleName: string;       // R3.1
+  accessibleName: string;       // R3.1, plus ', Demo' for demo data
 }
 interface ViewModel { entries: ViewEntry[]; groups: Array<{ status: Status; heading: string; ids: string[] }>; }
 ```
@@ -39,12 +41,16 @@ interface ViewModel { entries: ViewEntry[]; groups: Array<{ status: Status; head
 ```ts
 export function deriveViewModel(items: Item[], now: EpochMs, userZone: string, locale: string): ViewModel;
 export function allowedActions(status: Status): ViewEntry['actions'];
-export function nextFocusIndex(current: number, key: string, count: number): number; // Left, Right, Home, End
+export function nextFocusIndex(current: number, key: string, count: number): number; // Left/Right (Up/Down too), Home, End
 export function diffStatuses(prev: Map<string, Status>, next: Map<string, Status>): Array<{ id: string; from: Status; to: Status }>;
-export function createAnnouncer(el: HTMLElement): { announce(text: string): void };
+export function createAnnouncer(el: HTMLElement, clock?: () => number): { announce(text: string): void };
 ```
 
-Dialog: native `<dialog>` with `showModal()` for focus containment (confirm current browser support and focus behaviour on MDN before use), with a fallback focus trap if `showModal` is missing. The opener element is stored and refocused on close (R2.4).
+Dialog (`ui/Modal.tsx`): native `<dialog>` with `showModal()`, which per MDN makes the rest of the page inert and moves focus to the first focusable element; a small Tab trap is the fallback when `showModal` is missing. Escape (keydown and the `cancel` event) closes it. App stores the opener and refocuses it on close; if the opener left the DOM (the entry moved group or was deleted) it focuses the same item's scene element or Details button, then the list heading (R2.4).
+
+Scene items are SVG `<g role="button">` elements. The roving tabindex is written as the lowercase `tabindex` attribute: Preact sets SVG attributes verbatim, and a camelCase `tabIndex` attribute on an SVG element is not recognised by browsers (found by `Scene.test.tsx`).
+
+View toggle (R1.6): "Scene and list" shows the scene with the full list below it, "List only" hides the scene. The list is always rendered, so the skip link always has a target.
 
 ## Error handling
 

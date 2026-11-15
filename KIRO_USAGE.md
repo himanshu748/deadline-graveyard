@@ -42,6 +42,8 @@ How the specs were made, honestly: the agent wrote the three files per spec dire
 
 Implementing deadline-engine tasks 1 to 7 against the spec showed three gaps, fixed in the spec in the same commits as the code: the steering file says notes and due-date edits count as activity but the requirements had no criterion for it (added R2.12 `touch` and R2.13 `editDue`); a bare `Result<number>` for backup import could not carry the failing field path that R5.4 asks for (now `Result<number, BackupError>` with `path`); and P3 said every action on a resolved item is rejected, which contradicted R2.11 (epitaphs on buried items), so P3 now covers state-changing actions only. Task 8 (Kiro IDE Correctness) is still open.
 
+Implementing graveyard-scene tasks 1 to 5 and accessible-list-view tasks 1 to 7 also changed both designs, in the same commits: `layoutScene` returns a `SceneLayout` (the scene grows taller instead of overlapping items, which a fast-check property checks), `createTimeline` became `startAmbient` / `motionPlan` because `gsap.matchMedia` cannot be overridden by a manual toggle, narrow screens scroll the scene sideways (one of the two options R1.5 allows), and the Playwright reduced-motion check samples the flame's `transform` attribute because the page cannot reach the bundled GSAP instance. A happy-dom test found that Preact writes SVG attributes verbatim, so the roving `tabIndex` attribute on SVG `<g>` items was ignored; it is now the lowercase `tabindex`, and the design notes why. Graveyard-scene tasks 6 (50-item performance pass) and 7 (design-review agent) are left for the polish phase.
+
 Vibe coding so far: only the scaffold (config files and a placeholder page) was written without a spec.
 
 ## Steering strategy
@@ -112,6 +114,8 @@ fast-check 4.10.2 drives five of the six properties in [deadline-engine design.m
 
 One more property guards storage: [repository.test.ts](src/storage/repository.test.ts) generates up to 15 items and 5 settings (50 runs), exports them from one fake IndexedDB, restores the backup file text into another that already holds different data, and checks the next export is equal (R5.5). It passed on its first run.
 
+Two more properties guard the UI: [layout.property.test.ts](src/scene/layout.property.test.ts) (300 runs each, up to 60 random items at a random instant) checks that no two scene slots overlap and every slot stays inside the view (graveyard-scene R1.5), and that the scene and the list view hold the same ids with the same statuses (accessible-list-view R1.1). Mutation check: shrinking the slot spacing in `layoutScene` to 0.9 slot widths made the overlap property fail at once with two buried items as the counterexample; the change was reverted. [motion.test.ts](src/scene/motion.test.ts) checks with fast-check that parallax never moves the far layer more than 12 px for any pointer and scroll input (R1.2).
+
 Generators live in [arbitraries.ts](src/domain/arbitraries.ts): instants from 1970 to 2100, ten zones (Los Angeles, New York, London, Sydney, Sao Paulo, Santiago, Lord Howe with its 30-minute DST, Kathmandu at +05:45, Kolkata and UTC as no-DST controls), and real transitions found with Temporal's `getTimeZoneTransition('next')`.
 
 **Bugs found by the properties:** none in the engine so far. All five properties passed on their first run.
@@ -128,7 +132,7 @@ Checked on 15 Nov 2026. `kiro-cli powers --help` offers only `install` and `unin
 
 Lighthouse: not run yet.
 
-axe: the placeholder page passes `e2e/smoke.spec.ts` with zero axe violations (Playwright 1.65.1, @axe-core/playwright 4.14.0). This is only a scaffold page, so it says nothing about the final UI.
+axe (Playwright 1.65.1 Chromium, @axe-core/playwright 4.14.0, 15 Nov 2026): `e2e/a11y.spec.ts` adds two deadlines through the form, submits one, and finds zero violations in the scene view, the list-only view and the open add-deadline dialog. The same file checks keyboard navigation (one Tab stop, arrow keys, Enter opens, Escape returns focus), the skip link, and that flames stay still under `prefers-reduced-motion: reduce`. There is no seeded demo data yet, so these runs cover two to three items, not a full graveyard.
 
 ## Steps for the user
 
