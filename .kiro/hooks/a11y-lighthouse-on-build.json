@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "a11y-lighthouse-on-build",
+      "description": "After the agent runs npm run build, run scripts/audit.mjs (axe via Playwright and Lighthouse against dist/, results in reports/). Until audit.mjs exists it prints a notice and produces no scores. Script: scripts/hooks/a11y-lighthouse-on-build.mjs.",
+      "trigger": "PostToolUse",
+      "matcher": "shell",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/a11y-lighthouse-on-build.mjs"
+      },
+      "timeout": 600,
+      "enabled": true
+    }
+  ]
+}

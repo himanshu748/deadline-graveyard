@@ -17,12 +17,15 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": true,
     "noEmit": true
   },
   "include": [
     "src",
     "tests",
     "e2e",
+    "scripts",
     "vite.config.ts",
     "playwright.config.ts"
   ]

@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "commit-guard",
+      "description": "Before any agent shell command that runs git commit: block (exit 2) if .gitignore mentions kiro, LICENSE is missing, a real .env file or a secret (AWS, Google AIza, Groq gsk_, Context7, GitHub token, private key) is staged, or typecheck, lint or tests fail. Other shell commands pass straight through. Script: scripts/hooks/commit-guard.mjs.",
+      "trigger": "PreToolUse",
+      "matcher": "shell",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/commit-guard.mjs"
+      },
+      "timeout": 300,
+      "enabled": true
+    }
+  ]
+}

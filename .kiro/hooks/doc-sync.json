@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "doc-sync",
+      "description": "After a spec task finishes, ask the agent to bring KIRO_USAGE.md, README.md and the spec's tasks.md up to date with what actually changed.",
+      "trigger": "PostTaskExec",
+      "action": {
+        "type": "agent",
+        "prompt": "A spec task just finished. Update the docs to match what was actually done, and nothing more:\n1. In the spec's tasks.md, tick the checkbox only if the task is fully implemented and its tests pass.\n2. In KIRO_USAGE.md, update the sections this task touched (custom agents, hooks, spec-driven vs vibe coding, steering, MCP, property-based testing, powers, Lighthouse and axe scores). Describe only what happened; mark planned work as not yet done; never invent scores, users or numbers.\n3. In README.md, update How to run, How to test, Pre-existing work (every new dependency, font or sound with its license) and Project status if they changed.\n4. Use no em dashes. Do not commit; leave the changes for review."
+      },
+      "enabled": true
+    }
+  ]
+}
