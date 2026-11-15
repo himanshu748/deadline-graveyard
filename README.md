@@ -87,6 +87,7 @@ Third-party libraries used, as listed in `package.json`:
 | [vitest](https://vitest.dev) | 5.1.0 | MIT | Unit test runner |
 | [happy-dom](https://github.com/capricorn86/happy-dom) | 21.0.4 | MIT | DOM environment for UI unit tests |
 | [fast-check](https://fast-check.dev) | 4.10.2 | MIT | Property-based testing |
+| [fake-indexeddb](https://github.com/dumbmatter/fakeIndexedDB) | 6.2.8 | Apache-2.0 | In-memory IndexedDB for storage tests in Node |
 | [@playwright/test](https://playwright.dev) | 1.65.1 | Apache-2.0 | End-to-end tests |
 | [@axe-core/playwright](https://github.com/dequelabs/axe-core-npm) | 4.14.0 | MPL-2.0 | Accessibility checks in e2e tests |
 | [lighthouse](https://github.com/GoogleChrome/lighthouse) | 12.8.2 | Apache-2.0 | Performance and accessibility audits |
@@ -106,7 +107,7 @@ Fonts and sounds: none added yet. The design steering picks two SIL Open Font Li
 
 ## Project status
 
-Spec phase done: steering, feature specs, hooks, custom agents and MCP config are in `.kiro/`. The app itself is still a placeholder page; implementation starts with the deadline engine. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
+Spec phase done: steering, feature specs, hooks, custom agents and MCP config are in `.kiro/`. The deadline engine (`src/domain/`, pure state machine, timezones and DST, with fast-check property tests) and offline storage (`src/storage/`, IndexedDB with JSON backup and restore) are implemented and tested. The app UI is still a placeholder page. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
 
 ## License
 

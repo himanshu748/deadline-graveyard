@@ -42,7 +42,7 @@ type Phase = 'active' | 'due-soon' | 'missed';
 type Status = 'active' | 'due-soon' | 'missed' | 'ghost' | 'submitted' | 'buried';
 ```
 
-Backup file: `{ format: 'deadline-graveyard-backup', version: 1, exportedAt, items: Item[], settings }`.
+Backup file: `{ format: 'deadline-graveyard-backup', version: 1, exportedAt, items: Item[], settings: { key: string; value: JsonValue }[] }`, items sorted by `id` and settings by `key` so equal data gives equal files. Settings are an array of records (the same shape as the `settings` store) rather than an object, so an imported key such as `__proto__` stays plain data.
 
 IndexedDB: database `deadline-graveyard`, version 1, object stores `items` (keyPath `id`, index `dueAt`) and `settings` (keyPath `key`).
 
@@ -83,10 +83,18 @@ export interface Repository {
   list(): Promise<Item[]>;
   put(item: Item): Promise<void>;
   remove(id: string): Promise<void>;
+  getSetting(key: string): Promise<JsonValue | undefined>;
+  putSetting(key: string, value: JsonValue): Promise<void>;
   exportBackup(now: EpochMs): Promise<Backup>;
-  importBackup(data: unknown): Promise<Result<number>>;
+  importBackup(data: unknown): Promise<Result<number, BackupError>>; // file text or parsed value
 }
-export function openRepository(): Promise<{ repo: Repository; persistent: boolean }>;
+export function openRepository(name?: string): Promise<{ repo: Repository; persistent: boolean }>;
+export function memoryRepository(): Repository;
+
+// storage/backup.ts
+type BackupError = { code: 'invalid-backup'; path: string /* e.g. items[3].dueAt, $ for the file */; reason: string };
+export function validateBackup(data: unknown): Result<Backup, BackupError>;
+export function serializeBackup(backup: Backup): string;
 ```
 
 `adjustment` is computed by converting with `'compatible'` and comparing with `'earlier'` and `'later'`: if they differ and the wall clock of the result differs from the input, it is `gap-shifted`; if they differ and the wall clock matches, it is `ambiguous-earlier`.
@@ -94,7 +102,7 @@ export function openRepository(): Promise<{ repo: Repository; persistent: boolea
 ## Error handling
 
 - Domain functions never throw for expected cases; they return `Result`. Invalid zones are caught at `toInstant` (`RangeError` from Temporal is mapped to `invalid-zone`).
-- Backup import validates with a hand-written schema check (no extra dependency) and returns the first failing path, for example `items[3].dueAt`.
+- Backup import validates with a hand-written schema check (no extra dependency) and returns the first failing path, for example `items[3].dueAt`. It rejects unknown fields, duplicate ids or keys, invalid zones, non-integer instants, URLs that are not `http:` or `https:` (so a restored `javascript:` link can never reach the UI), over-long strings and JSON nested deeper than 10 levels. Validation finishes before anything is written; the restore then clears and refills both stores in one readwrite transaction, so a failed write also leaves the old data.
 - If `indexedDB.open` fails (private mode, disabled), `openRepository` returns an in-memory repository with `persistent: false` (R5.6).
 
 ## Correctness properties
@@ -117,5 +125,5 @@ A purity check (R4.2) runs as a unit test that scans `src/domain/**/*.ts` (exclu
 ## Testing strategy
 
 - Unit and property tests in Node (Vitest `environment: 'node'`), 500 runs for P1 to P3, 1000 runs for P4 and each P5 case (unique, gap, overlap).
-- Storage tests use `fake-indexeddb` (to be added as a dev dependency and listed in README).
+- Storage tests use `fake-indexeddb` 6.2.8 (`import 'fake-indexeddb/auto'`, a fresh `new IDBFactory()` per test), listed in README > Pre-existing work.
 - Kiro IDE spec correctness (property extraction) will be run on this spec by the author in the IDE and compared with P1 to P6 in KIRO_USAGE.md.

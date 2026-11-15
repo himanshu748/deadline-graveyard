@@ -40,7 +40,7 @@ Each `requirements.md` has user stories and numbered EARS acceptance criteria (`
 
 How the specs were made, honestly: the agent wrote the three files per spec directly from the approved `PLAN.md` and the steering files, in Kiro's spec format, in one CLI session. Kiro's interactive spec workflow with approval gates and "Analyze Requirements" has not been run on them yet.
 
-Implementing deadline-engine tasks 1 to 7 against the spec showed two gaps, fixed in the spec in the same commits as the code: the steering file says notes and due-date edits count as activity but the requirements had no criterion for it (added R2.12 `touch` and R2.13 `editDue`); and P3 said every action on a resolved item is rejected, which contradicted R2.11 (epitaphs on buried items), so P3 now covers state-changing actions only. Task 8 (Kiro IDE Correctness) is still open.
+Implementing deadline-engine tasks 1 to 7 against the spec showed three gaps, fixed in the spec in the same commits as the code: the steering file says notes and due-date edits count as activity but the requirements had no criterion for it (added R2.12 `touch` and R2.13 `editDue`); a bare `Result<number>` for backup import could not carry the failing field path that R5.4 asks for (now `Result<number, BackupError>` with `path`); and P3 said every action on a resolved item is rejected, which contradicted R2.11 (epitaphs on buried items), so P3 now covers state-changing actions only. Task 8 (Kiro IDE Correctness) is still open.
 
 Vibe coding so far: only the scaffold (config files and a placeholder page) was written without a spec.
 
@@ -109,6 +109,8 @@ fast-check 4.10.2 drives five of the six properties in [deadline-engine design.m
 | P4 | same file | 1000 | The due-soon window is exactly `[dueAt - 86,400,000 ms, dueAt)`, checked at both edges and 1 ms either side, with `dueAt` biased to within 2 h before and 26 h after real DST transitions. R1.2, R1.4 |
 | P5 | [time.property.test.ts](src/domain/time.property.test.ts) | 1000 x 3 | Wall-clock round trip for times that exist once; spring-forward gap times shift forward by the gap (`gap-shifted`); fall-back repeats take the earlier offset (`ambiguous-earlier`). R3.2, R3.3, R3.5 |
 | P6 | not written yet | | `.ics` round trip, lands with capture-and-export. |
+
+One more property guards storage: [repository.test.ts](src/storage/repository.test.ts) generates up to 15 items and 5 settings (50 runs), exports them from one fake IndexedDB, restores the backup file text into another that already holds different data, and checks the next export is equal (R5.5). It passed on its first run.
 
 Generators live in [arbitraries.ts](src/domain/arbitraries.ts): instants from 1970 to 2100, ten zones (Los Angeles, New York, London, Sydney, Sao Paulo, Santiago, Lord Howe with its 30-minute DST, Kathmandu at +05:45, Kolkata and UTC as no-DST controls), and real transitions found with Temporal's `getTimeZoneTransition('next')`.
 

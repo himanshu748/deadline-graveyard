@@ -29,7 +29,7 @@
   - `tests/domain/purity.test.ts` scans `src/domain/` for forbidden clock, DOM and storage calls.
   - _Requirements: R4.1, R4.2_
 
-- [ ] 7. IndexedDB repository and backup
+- [x] 7. IndexedDB repository and backup
   - Add `fake-indexeddb` dev dependency (confirm API in its README) and list it in README.
   - Implement `src/storage/repository.ts` with `idb` (`openDB`, upgrade callback creating `items` and `settings`), in-memory fallback, backup export, schema-validated import.
   - Tests: persist then reload, export then import equals, invalid backup rejected with path, fallback when `indexedDB` is undefined.
