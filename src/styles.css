@@ -1,0 +1,13 @@
+/* Placeholder styles. The graveyard design system replaces this in FEAT-004. */
+:root {
+  color-scheme: dark;
+  background: #0b1020;
+  color: #e8e6f0;
+  font-family: system-ui, sans-serif;
+}
+
+main {
+  max-width: 40rem;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+}
