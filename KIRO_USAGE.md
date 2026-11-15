@@ -28,7 +28,7 @@ The plan came first and was approved before any code. Then, in the spec phase, e
 
 | Spec | Requirements (EARS) | Judging criterion |
 |---|---|---|
-| [deadline-engine](.kiro/specs/deadline-engine) | 32 (state machine, ghosts, timezones and DST, purity, storage) | Potential Impact, Technological Implementation |
+| [deadline-engine](.kiro/specs/deadline-engine) | 34 (state machine, ghosts, timezones and DST, purity, storage) | Potential Impact, Technological Implementation |
 | [graveyard-scene](.kiro/specs/graveyard-scene) | 27 (SVG layers, parallax, fog, candles, tombstones, lanterns, ghosts, GSAP, reduced motion, sound) | Design |
 | [accessible-list-view](.kiro/specs/accessible-list-view) | 17 (keyboard navigation, list view of the whole scene, focus, announcements) | Design |
 | [capture-and-export](.kiro/specs/capture-and-export) | 24 (add from URL with SSRF guards, paste text, manual entry, `.ics`, notifications, backup UI, LLM adapter) | Potential Impact |
@@ -38,7 +38,9 @@ The plan came first and was approved before any code. Then, in the spec phase, e
 
 Each `requirements.md` has user stories and numbered EARS acceptance criteria (`R1.1` ...). Each `design.md` has architecture, data model, interfaces, error handling and a testing strategy. Each `tasks.md` lists checkbox tasks that cite requirement IDs; every requirement ID is cited by at least one task (checked by counting IDs in both files). The deadline-engine design lists six correctness properties (P1 to P6), each traced to requirement IDs.
 
-How the specs were made, honestly: the agent wrote the three files per spec directly from the approved `PLAN.md` and the steering files, in Kiro's spec format, in one CLI session. Kiro's interactive spec workflow with approval gates and "Analyze Requirements" has not been run on them yet. No task is ticked yet because no feature code exists yet.
+How the specs were made, honestly: the agent wrote the three files per spec directly from the approved `PLAN.md` and the steering files, in Kiro's spec format, in one CLI session. Kiro's interactive spec workflow with approval gates and "Analyze Requirements" has not been run on them yet.
+
+Implementing deadline-engine tasks 1 to 7 against the spec showed two gaps, fixed in the spec in the same commits as the code: the steering file says notes and due-date edits count as activity but the requirements had no criterion for it (added R2.12 `touch` and R2.13 `editDue`); and P3 said every action on a resolved item is rejected, which contradicted R2.11 (epitaphs on buried items), so P3 now covers state-changing actions only. Task 8 (Kiro IDE Correctness) is still open.
 
 Vibe coding so far: only the scaffold (config files and a placeholder page) was written without a spec.
 
@@ -97,7 +99,24 @@ Workspace config: [`.kiro/settings/mcp.json`](.kiro/settings/mcp.json).
 
 ## Property-based testing
 
-fast-check 4.10.2 is installed and a smoke property runs in `tests/smoke.test.ts`. The real properties are specified but not written yet: [deadline-engine design.md](.kiro/specs/deadline-engine/design.md) lists P1 to P6 (state independent of display zone, monotonic phases, terminal resolutions, exact 24 h window across DST, local-time round trip under the documented DST policy, `.ics` round trip), each traced to EARS requirement IDs. Kiro IDE's own property extraction has not been run yet.
+fast-check 4.10.2 drives five of the six properties in [deadline-engine design.md](.kiro/specs/deadline-engine/design.md). Each test title starts with its property number and a `// Validates:` comment names the EARS requirement IDs.
+
+| Property | Test | Runs | What it checks |
+|---|---|---|---|
+| P1 | [status.property.test.ts](src/domain/status.property.test.ts) | 500 | Status does not depend on the zone, and rendering `dueAt` as wall-clock time in any zone then converting back returns the same instant (a fall-back repeat returns its earlier occurrence, flagged). R1.5, R3.1, R3.6 |
+| P2 | same file | 500 | With no action, phase never moves backwards as `now` grows, and missed stays missed. R1.1 to R1.3, R1.6 |
+| P3 | same file | 500 | Submitted and buried items stay terminal across random action sequences at later instants; every state-changing action returns `resolved`. R2.1, R2.2, R2.6, R2.10, R2.11 |
+| P4 | same file | 1000 | The due-soon window is exactly `[dueAt - 86,400,000 ms, dueAt)`, checked at both edges and 1 ms either side, with `dueAt` biased to within 2 h before and 26 h after real DST transitions. R1.2, R1.4 |
+| P5 | [time.property.test.ts](src/domain/time.property.test.ts) | 1000 x 3 | Wall-clock round trip for times that exist once; spring-forward gap times shift forward by the gap (`gap-shifted`); fall-back repeats take the earlier offset (`ambiguous-earlier`). R3.2, R3.3, R3.5 |
+| P6 | not written yet | | `.ics` round trip, lands with capture-and-export. |
+
+Generators live in [arbitraries.ts](src/domain/arbitraries.ts): instants from 1970 to 2100, ten zones (Los Angeles, New York, London, Sydney, Sao Paulo, Santiago, Lord Howe with its 30-minute DST, Kathmandu at +05:45, Kolkata and UTC as no-DST controls), and real transitions found with Temporal's `getTimeZoneTransition('next')`.
+
+**Bugs found by the properties:** none in the engine so far. All five properties passed on their first run.
+
+**Mutation check (does P4 have teeth?):** I temporarily replaced the due-soon start in `deriveStatus` with wall-clock arithmetic (`dueAt` in the item's zone minus one calendar day via Temporal `subtract({ days: 1 })`). P4 failed at once with counterexample `{ zone: 'Australia/Sydney', ms: 57686400000 }` (31 Oct 1971, a DST start), seed 73275414. P1 to P3 and every example test in `status.test.ts` still passed, so only the DST-biased property caught it. The mutation was reverted.
+
+Kiro IDE's own property extraction (spec Correctness) has not been run yet; see [Steps for the user](#steps-for-the-user).
 
 ## Kiro powers
 

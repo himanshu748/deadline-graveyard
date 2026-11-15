@@ -36,6 +36,8 @@ Glossary: **item** is a tracked deadline or project; **now** is an instant passe
 - **R2.9** WHEN the user revives a ghost THE SYSTEM SHALL set `lastActivityAt` to `now`.
 - **R2.10** IF any action targets a resolved item THEN THE SYSTEM SHALL reject it with a typed error and leave the item unchanged.
 - **R2.11** WHEN the user writes or edits an epitaph on a missed or buried item THE SYSTEM SHALL store it without changing the status.
+- **R2.12** WHEN the user records activity (for example a note) on an unresolved item THE SYSTEM SHALL set `lastActivityAt` to `now`.
+- **R2.13** WHEN the user edits the due instant of an unresolved item THE SYSTEM SHALL store the new `dueAt`, zone and `dateOnly` flag and set `lastActivityAt` to `now`.
 
 ## Requirement 3: timezones, DST and date-only deadlines
 

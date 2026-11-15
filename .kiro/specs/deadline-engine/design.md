@@ -14,7 +14,8 @@ flowchart LR
   Derive --> List["ui/ListView"]
   Actions["domain/actions.ts submit | bury | revive | edit | epitaph"] --> Store
   Time["domain/time.ts Temporal helpers"] --> Actions
-  Time --> Format["domain/format.ts"]
+  Time --> Format["domain/time.ts formatForDisplay"]
+  Derive --> Visual["domain/visual.ts wax, flicker, ghost distance"]
 ```
 
 ## Data model
@@ -55,13 +56,19 @@ export function phaseAt(dueAt: EpochMs, now: EpochMs): Phase;
 export function deriveStatus(item: Item, now: EpochMs): Status;
 
 // domain/actions.ts (return new items, never mutate)
-type ActionError = { code: 'resolved' | 'past-due' | 'not-ghost' | 'not-missed-or-ghost' | 'invalid' };
+type ActionError = { code: 'resolved' | 'past-due' | 'not-ghost' | 'not-missed-or-ghost' | 'not-missed-or-buried' | 'invalid' };
 type Result<T> = { ok: true; value: T } | { ok: false; error: ActionError };
 export function submit(item: Item, now: EpochMs): Result<Item>;
 export function bury(item: Item, now: EpochMs): Result<Item>;
 export function revive(item: Item, now: EpochMs): Result<Item>;
+export function touch(item: Item, now: EpochMs): Result<Item>;   // R2.12, activity such as a note
 export function editDue(item: Item, dueAt: EpochMs, zone: string, dateOnly: boolean, now: EpochMs): Result<Item>;
-export function setEpitaph(item: Item, text: string, now: EpochMs): Result<Item>;
+export function setEpitaph(item: Item, text: string, now: EpochMs): Result<Item>; // trimmed, max 280 chars, empty clears
+
+// domain/visual.ts (pure numbers shared by the scene and the list view)
+export function waxFraction(item: Item, now: EpochMs): number;    // graveyard-scene R2.1
+export function flicker(item: Item, now: EpochMs): { speed: 'slow' | 'fast'; urgency: number } | null; // R2.2, R2.3
+export function ghostDistance(item: Item, now: EpochMs): number;  // graveyard-scene R2.6
 
 // domain/time.ts (temporal-polyfill)
 type LocalInput = { date: string /* YYYY-MM-DD */; time?: string /* HH:mm[:ss] */; zone: string };
@@ -96,9 +103,9 @@ Each property is a fast-check test in `src/domain/*.property.test.ts`. Generator
 
 | # | Property | Traces to |
 |---|---|---|
-| P1 | For any item, `now` and two display zones, `deriveStatus` gives the same status and formatting the instant in either zone then converting back gives the same `dueAt`. | R1.5, R3.1, R3.6 |
+| P1 | For any item, `now` and two display zones, `deriveStatus` gives the same status and formatting the instant (whole seconds) in either zone then converting back gives the same `dueAt`, except that a time inside a fall-back overlap comes back as its earlier occurrence, flagged `ambiguous-earlier` (R3.2). | R1.5, R3.1, R3.6 |
 | P2 | For any unresolved item and `now1 <= now2` with no action between, `rank(phaseAt(dueAt, now1)) <= rank(phaseAt(dueAt, now2))` with rank active < due-soon < missed. | R1.1, R1.2, R1.3, R1.6 |
-| P3 | For any resolved item, any later `now` and any sequence of actions, the status stays `submitted` or `buried` and every action returns `resolved`. | R2.1, R2.2, R2.6, R2.10 |
+| P3 | For any resolved item, any later `now` and any sequence of actions, the status stays `submitted` or `buried`, every state-changing action (`submit`, `bury`, `revive`, `touch`, `editDue`) returns `resolved`, and `setEpitaph` (allowed on buried items by R2.11) never changes the resolution. | R2.1, R2.2, R2.6, R2.10, R2.11 |
 | P4 | For any `dueAt` and zone (including instants next to DST transitions), the set of `now` values with phase `due-soon` is exactly `[dueAt - 86,400,000, dueAt)`, checked at both boundaries and 1 ms either side. | R1.2, R1.4 |
 | P5 | For any zone and local date-time that exists exactly once in that zone, `toLocal(toInstant(x))` equals `x`; for generated gap times the result is shifted forward by the gap and flagged `gap-shifted`; for generated repeated times the result has the earlier offset and is flagged `ambiguous-earlier`. | R3.2, R3.3, R3.4, R3.5 |
 | P6 | For any list of items, parsing the `.ics` produced by export returns the same uid, title, instant, zone and dateOnly for every item. (`.ics` code lives in capture-and-export; the property is listed here because it is a domain round trip.) | capture-and-export R2.1, R2.3; R3.1 |
@@ -109,6 +116,6 @@ A purity check (R4.2) runs as a unit test that scans `src/domain/**/*.ts` (exclu
 
 ## Testing strategy
 
-- Unit and property tests in Node (Vitest `environment: 'node'`), fast-check default 100 runs, 1000 runs for P4 and P5.
+- Unit and property tests in Node (Vitest `environment: 'node'`), 500 runs for P1 to P3, 1000 runs for P4 and each P5 case (unique, gap, overlap).
 - Storage tests use `fake-indexeddb` (to be added as a dev dependency and listed in README).
 - Kiro IDE spec correctness (property extraction) will be run on this spec by the author in the IDE and compared with P1 to P6 in KIRO_USAGE.md.

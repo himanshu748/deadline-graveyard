@@ -39,9 +39,8 @@ interface SceneNode {
 ## Interfaces
 
 ```ts
-// scene/layout.ts (pure)
-export function waxFraction(item: Item, now: EpochMs): number;           // R2.1
-export function ghostDistance(item: Item, now: EpochMs): number;         // R2.6
+// scene/layout.ts (pure). waxFraction and ghostDistance live in domain/visual.ts
+// (deadline-engine design) so the list view can read the same numbers; layout imports them.
 export function layoutScene(items: Item[], now: EpochMs, width: number): SceneNode[];
 
 // scene/motion.ts
