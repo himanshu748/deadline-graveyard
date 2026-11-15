@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.85",
+        "--headless",
+        "--isolated",
+        "--viewport-size",
+        "1280x800",
+        "--output-dir",
+        "reports/raw/playwright-mcp"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
