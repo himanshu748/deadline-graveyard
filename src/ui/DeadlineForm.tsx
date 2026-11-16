@@ -3,6 +3,9 @@
 import { useState } from 'preact/hooks';
 import { toInstant, toLocal, type ConversionError } from '../domain/time.ts';
 import type { Item } from '../domain/types.ts';
+import type { CaptureResult } from '../capture/client.ts';
+import type { LlmProvider } from '../llm/provider.ts';
+import { CapturePanel, type CaptureApply } from './CapturePanel.tsx';
 import { Modal } from './Modal.tsx';
 
 export interface DeadlineValues {
@@ -19,6 +22,12 @@ export interface DeadlineFormProps {
   userZone: string;
   onSave: (values: DeadlineValues) => Promise<string | null>;
   onCancel: () => void;
+  /** Add-from-URL helpers (capture-and-export). Shown when adding, not when editing. */
+  capture?: {
+    fetchMeta: (url: string) => Promise<CaptureResult>;
+    llm: LlmProvider;
+    llmName: string;
+  };
 }
 
 export const TITLE_MAX_LENGTH = 120;
@@ -42,7 +51,7 @@ export function zoneOptions(userZone: string, extra?: string): string[] {
   return [...set].sort();
 }
 
-export function DeadlineForm({ item, userZone, onSave, onCancel }: DeadlineFormProps) {
+export function DeadlineForm({ item, userZone, onSave, onCancel, capture }: DeadlineFormProps) {
   const initialZone = item?.zone ?? userZone;
   const local = item ? toLocal(item.dueAt, item.zone) : null;
   const [title, setTitle] = useState(item?.title ?? '');
@@ -53,6 +62,18 @@ export function DeadlineForm({ item, userZone, onSave, onCancel }: DeadlineFormP
   const [zone, setZone] = useState(initialZone);
   const [error, setError] = useState<string | null>(null);
   const titleId = item ? 'form-title-edit' : 'form-title-add';
+
+  // R1.2, R1.7: prefilled values land in the normal fields, so they stay editable.
+  const applyCapture = ({ title: found, candidate }: CaptureApply) => {
+    if (found) setTitle(found.slice(0, TITLE_MAX_LENGTH));
+    if (candidate) {
+      setDate(candidate.date);
+      setTime(candidate.time ?? '');
+      setDateOnly(candidate.time === undefined);
+      setZone(candidate.zone);
+    }
+    setError(null);
+  };
 
   const submit = async (e: Event) => {
     e.preventDefault();
@@ -81,9 +102,12 @@ export function DeadlineForm({ item, userZone, onSave, onCancel }: DeadlineFormP
           <label for="f-url">Link (optional)</label>
           <input id="f-url" type="url" inputMode="url" placeholder="https://" value={url} onInput={(e) => setUrl(e.currentTarget.value)} aria-describedby="f-url-hint" />
           <span class="hint" id="f-url-hint">
-            Saved as a link. Filling in the name and date from the page comes in a later version.
+            Optional. Saved with the deadline{capture && !item ? '; use the buttons below to fill in the name and date from it' : ''}.
           </span>
         </div>
+        {capture && !item ? (
+          <CapturePanel url={url} userZone={userZone} capture={capture.fetchMeta} llm={capture.llm} llmName={capture.llmName} onApply={applyCapture} />
+        ) : null}
         <div class="row">
           <div class="field">
             <label for="f-date">Date</label>
@@ -101,7 +125,7 @@ export function DeadlineForm({ item, userZone, onSave, onCancel }: DeadlineFormP
         <div class="field">
           <label for="f-zone">Time zone of the deadline</label>
           <select id="f-zone" value={zone} onChange={(e) => setZone(e.currentTarget.value)} aria-describedby="f-zone-hint">
-            {zoneOptions(userZone, item?.zone).map((z) => (
+            {zoneOptions(userZone, zone).map((z) => (
               <option key={z} value={z}>
                 {z}
               </option>

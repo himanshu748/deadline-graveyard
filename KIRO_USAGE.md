@@ -44,6 +44,8 @@ Implementing deadline-engine tasks 1 to 7 against the spec showed three gaps, fi
 
 Implementing graveyard-scene tasks 1 to 5 and accessible-list-view tasks 1 to 7 also changed both designs, in the same commits: `layoutScene` returns a `SceneLayout` (the scene grows taller instead of overlapping items, which a fast-check property checks), `createTimeline` became `startAmbient` / `motionPlan` because `gsap.matchMedia` cannot be overridden by a manual toggle, narrow screens scroll the scene sideways (one of the two options R1.5 allows), and the Playwright reduced-motion check samples the flame's `transform` attribute because the page cannot reach the bundled GSAP instance. A happy-dom test found that Preact writes SVG attributes verbatim, so the roving `tabIndex` attribute on SVG `<g>` items was ignored; it is now the lowercase `tabindex`, and the design notes why. Graveyard-scene tasks 6 (50-item performance pass) and 7 (design-review agent) are left for the polish phase.
 
+Implementing capture-and-export tasks 1 to 8 changed that design too, each change written into its design.md as "Change from the first draft": timed `.ics` events use the UTC `DTSTART` form and carry the zone in `X-DG-TZID`, because RFC 5545 says a `TZID` parameter must point at a `VTIMEZONE` in the same file and the app does not write those; the page fetch uses `node:http` with a lookup pinned to the already-checked addresses instead of global `fetch`, which closes the DNS-rebinding gap the first draft listed as a known limit; a page over 1 MB is cut at 1 MB instead of refused (title and JSON-LD sit in `<head>`), so the `too-large` error was dropped; the Groq default model moved from `llama-3.1-8b-instant` to `openai/gpt-oss-20b` because Groq's models page now lists the former as Enterprise; and a local `vercel build` (no login, no deploy) showed the function only loads on Vercel with `rewriteRelativeImportExtensions` on, so `tsconfig.json` sets it. Task 4's tabs became buttons inside the add form so the manual fields never hide.
+
 Vibe coding so far: only the scaffold (config files and a placeholder page) was written without a spec.
 
 ## Steering strategy
@@ -76,6 +78,7 @@ Known limits, stated plainly:
 - The docs show the STDIN payload for an MCP tool but not the `tool_input` field names for `execute_bash`, so the scripts read `tool_input.command` and fall back to the first string field.
 - When one command both stages and commits (`git add x && git commit`), the guard also scans unstaged tracked changes and checks untracked file names, but it does not read untracked file contents.
 - Whether hooks fire when T3 Code drives `kiro-cli` over ACP is not verified yet. This session started before the hook files existed, so its own commits were not guarded by the hook; the guard was run by hand before committing.
+- The guard's test step found a real problem on 16 Nov 2026: under full parallel load on a busy machine (load average above 20 on 10 cores), two to six of the heavier fast-check properties ran for up to 18 s against Vitest's 5 s default timeout, so `npm test` failed and the guard would refuse the commit even though each property passes alone in under 1 s. The fix is a 60 s suite `testTimeout` in `vite.config.ts` ([Vitest docs](https://vitest.dev/config/testtimeout)); no property's `numRuns` was lowered, and `structure.md` now says never to lower it to fit a timeout.
 
 ## Custom agents
 
@@ -97,11 +100,11 @@ Workspace config: [`.kiro/settings/mcp.json`](.kiro/settings/mcp.json).
 | Playwright MCP | `npx -y @playwright/mcp@0.0.85 --headless --isolated --viewport-size 1280x800 --output-dir reports/raw/playwright-mcp` (package and flags from the [official README](https://github.com/microsoft/playwright-mcp), Apache-2.0) | Lets the design-review agent drive the real app, emulate reduced motion (`browser_emulate_media`) and take screenshots. | Started it over stdio and sent `initialize` and `tools/list`: it answered with 25 tools including `browser_take_screenshot` and `browser_emulate_media`. |
 | Context7 | Remote `https://mcp.context7.com/mcp`, no key | Up-to-date library docs for confirming APIs (GSAP, Temporal, idb, fast-check, Vite) before use, as `tech.md` requires. | Context7 docs say a free API key is only recommended for higher rate limits and coding agents do not need one; an `initialize` POST to the URL returned HTTP 200. If rate limits bite, add `"headers": { "Authorization": "Bearer ${CONTEXT7_API_KEY}" }` and approve that variable in Kiro's MCP approved env vars setting. |
 
-`kiro-cli mcp list` shows both servers. Neither has been used from a Kiro agent session yet.
+`kiro-cli mcp list` shows both servers. Neither has been used from a Kiro agent session yet. The docs behind the capture work (Vercel, Gemini, Groq, Ollama, MDN, RFC 5545) were checked by fetching the official pages directly, listed with dates in [capture-and-export design.md](.kiro/specs/capture-and-export/design.md#docs-relied-on), not through Context7.
 
 ## Property-based testing
 
-fast-check 4.10.2 drives five of the six properties in [deadline-engine design.md](.kiro/specs/deadline-engine/design.md). Each test title starts with its property number and a `// Validates:` comment names the EARS requirement IDs.
+fast-check 4.10.2 drives all six properties in [deadline-engine design.md](.kiro/specs/deadline-engine/design.md). Each test title starts with its property number and a `// Validates:` comment names the EARS requirement IDs.
 
 | Property | Test | Runs | What it checks |
 |---|---|---|---|
@@ -110,15 +113,17 @@ fast-check 4.10.2 drives five of the six properties in [deadline-engine design.m
 | P3 | same file | 500 | Submitted and buried items stay terminal across random action sequences at later instants; every state-changing action returns `resolved`. R2.1, R2.2, R2.6, R2.10, R2.11 |
 | P4 | same file | 1000 | The due-soon window is exactly `[dueAt - 86,400,000 ms, dueAt)`, checked at both edges and 1 ms either side, with `dueAt` biased to within 2 h before and 26 h after real DST transitions. R1.2, R1.4 |
 | P5 | [time.property.test.ts](src/domain/time.property.test.ts) | 1000 x 3 | Wall-clock round trip for times that exist once; spring-forward gap times shift forward by the gap (`gap-shifted`); fall-back repeats take the earlier offset (`ambiguous-earlier`). R3.2, R3.3, R3.5 |
-| P6 | not written yet | | `.ics` round trip, lands with capture-and-export. |
+| P6 | [ics.property.test.ts](src/capture/ics.property.test.ts) | 300 | Exporting up to 8 random items to `.ics` and parsing the file with the app's own parser returns the same uid, title, instant, zone, date-only flag and demo flag. Titles are full of `,`, `;`, `\`, newlines, emoji and other multi-byte text; items are timed or date-only in the ten test zones. A second property (100 runs) checks that no line is longer than 75 octets. capture-and-export R2.3, R2.4 |
 
 One more property guards storage: [repository.test.ts](src/storage/repository.test.ts) generates up to 15 items and 5 settings (50 runs), exports them from one fake IndexedDB, restores the backup file text into another that already holds different data, and checks the next export is equal (R5.5). It passed on its first run.
 
 Two more properties guard the UI: [layout.property.test.ts](src/scene/layout.property.test.ts) (300 runs each, up to 60 random items at a random instant) checks that no two scene slots overlap and every slot stays inside the view (graveyard-scene R1.5), and that the scene and the list view hold the same ids with the same statuses (accessible-list-view R1.1). Mutation check: shrinking the slot spacing in `layoutScene` to 0.9 slot widths made the overlap property fail at once with two buried items as the counterexample; the change was reverted. [motion.test.ts](src/scene/motion.test.ts) checks with fast-check that parallax never moves the far layer more than 12 px for any pointer and scroll input (R1.2).
 
+The add-from-URL guard has its own properties in [url-guard.property.test.ts](src/capture/url-guard.property.test.ts) (100 runs each): `isPublicAddress` never accepts a generated address from the private, loopback, link-local (including cloud metadata `169.254.169.254`), CGNAT, multicast or reserved IPv4 ranges, nor the same addresses in IPv4-mapped IPv6 form, nor any `fc00::/7` or `fe80::/10` address, and it never throws on arbitrary strings (capture-and-export R1.4). Table tests next to it cover the exact addresses the plan names (`127.0.0.1`, `10.x`, `169.254.169.254`, `::1`, `fc00::1`) and non-http schemes (`file:`, `ftp:`, `javascript:`, `data:`, `gopher:`).
+
 Generators live in [arbitraries.ts](src/domain/arbitraries.ts): instants from 1970 to 2100, ten zones (Los Angeles, New York, London, Sydney, Sao Paulo, Santiago, Lord Howe with its 30-minute DST, Kathmandu at +05:45, Kolkata and UTC as no-DST controls), and real transitions found with Temporal's `getTimeZoneTransition('next')`.
 
-**Bugs found by the properties:** none in the engine so far. All five properties passed on their first run.
+**Bugs found by the properties:** none in the engine so far. All five engine properties passed on their first run. P6 and the URL-guard properties pass now; the earlier sessions that wrote them did not record whether they failed first, so no claim is made either way.
 
 **Mutation check (does P4 have teeth?):** I temporarily replaced the due-soon start in `deriveStatus` with wall-clock arithmetic (`dueAt` in the item's zone minus one calendar day via Temporal `subtract({ days: 1 })`). P4 failed at once with counterexample `{ zone: 'Australia/Sydney', ms: 57686400000 }` (31 Oct 1971, a DST start), seed 73275414. P1 to P3 and every example test in `status.test.ts` still passed, so only the DST-biased property caught it. The mutation was reverted.
 
@@ -133,6 +138,8 @@ Checked on 15 Nov 2026. `kiro-cli powers --help` offers only `install` and `unin
 Lighthouse: not run yet.
 
 axe (Playwright 1.65.1 Chromium, @axe-core/playwright 4.14.0, 15 Nov 2026): `e2e/a11y.spec.ts` adds two deadlines through the form, submits one, and finds zero violations in the scene view, the list-only view and the open add-deadline dialog. The same file checks keyboard navigation (one Tab stop, arrow keys, Enter opens, Escape returns focus), the skip link, and that flames stay still under `prefers-reduced-motion: reduce`. There is no seeded demo data yet, so these runs cover two to three items, not a full graveyard.
+
+`e2e/capture.spec.ts` (16 Nov 2026) blocks every request that leaves the local preview server, then finds zero axe violations in the add dialog after the paste-text fallback has filled in the date, time and zone, and zero in the Export and settings dialog; it also checks that the downloaded `.ics` holds the saved deadline. Full e2e run on 16 Nov 2026: 7 of 7 passed.
 
 ## Steps for the user
 

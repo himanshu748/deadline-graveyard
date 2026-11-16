@@ -1,17 +1,27 @@
 // App shell: one clock, one item list, two renderings (scene and list) of the same view model.
 // Specs: graveyard-scene, accessible-list-view. Persistence: storage/repository.ts.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { fetchPageMeta, type CaptureResult } from '../capture/client.ts';
+import { toIcs } from '../capture/ics.ts';
 import { bury, editDue, revive, setEpitaph, submit } from '../domain/actions.ts';
+import { toLocal } from '../domain/time.ts';
 import type { ActionErrorCode, EpochMs, Item, Result, Status } from '../domain/types.ts';
 import { layoutScene } from '../scene/layout.ts';
 import { initialMotion, pauseWhenHidden, REDUCED_MOTION_QUERY, type MotionMode } from '../scene/motion.ts';
 import { Scene } from '../scene/Scene.tsx';
 import { createSound, isSoundSupported, type Sound } from '../scene/sound.ts';
+import { createProvider } from '../llm/providers.ts';
+import { loadLlmSettings, saveLlmSettings } from '../llm/settings.ts';
+import { browserNotifier, type Notifier, type PermissionState } from '../notifications/notify.ts';
+import { dueReminders, keysToMark, pruneSent } from '../notifications/reminders.ts';
+import { serializeBackup } from '../storage/backup.ts';
 import { openRepository, type Repository } from '../storage/repository.ts';
 import { createAnnouncer, type Announcer } from './announcer.ts';
 import { DeadlineForm, type DeadlineValues } from './DeadlineForm.tsx';
 import { DetailDialog } from './DetailDialog.tsx';
+import { downloadText } from './download.ts';
 import { LIST_HEADING_ID, ListView } from './ListView.tsx';
+import { PROVIDER_SHORT, ToolsDialog } from './ToolsDialog.tsx';
 import { CHANGE_MESSAGES, deriveViewModel, diffStatuses, type EntryAction } from './view-model.ts';
 
 export type ViewChoice = 'scene' | 'list';
@@ -19,6 +29,8 @@ export type ViewChoice = 'scene' | 'list';
 export const SETTING_MOTION = 'motion';
 export const SETTING_VIEW = 'view';
 export const SETTING_SOUND = 'sound';
+export const SETTING_REMINDERS = 'reminders';
+export const SETTING_REMINDERS_SENT = 'reminders-sent';
 
 export interface AppProps {
   open?: () => Promise<{ repo: Repository; persistent: boolean }>;
@@ -28,9 +40,13 @@ export interface AppProps {
   makeSound?: () => Sound;
   matchMedia?: (query: string) => MediaQueryList | null;
   newId?: () => string;
+  fetchMeta?: (url: string) => Promise<CaptureResult>;
+  notifier?: Notifier;
+  /** Where LLM settings (and keys) live. Never the IndexedDB repository, so keys stay out of backups. */
+  llmStorage?: Pick<Storage, 'getItem' | 'setItem'> | null;
 }
 
-type DialogState = null | { kind: 'detail'; id: string } | { kind: 'form'; id?: string };
+type DialogState = null | { kind: 'detail'; id: string } | { kind: 'form'; id?: string } | { kind: 'tools' };
 
 const ACTION_ERRORS: Record<ActionErrorCode, string> = {
   resolved: 'This deadline is already resolved.',
@@ -53,6 +69,9 @@ export function App({
   makeSound = createSound,
   matchMedia = defaultMatchMedia,
   newId = () => crypto.randomUUID(),
+  fetchMeta = (url) => fetchPageMeta(url),
+  notifier = browserNotifier,
+  llmStorage,
 }: AppProps) {
   const [repo, setRepo] = useState<Repository | null>(null);
   const [persistent, setPersistent] = useState(true);
@@ -64,6 +83,10 @@ export function App({
   const [soundOn, setSoundOn] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [remindersOn, setRemindersOn] = useState(false);
+  const [permission, setPermission] = useState<PermissionState>(() => notifier.permission());
+  const [llmSettings, setLlmSettings] = useState(() => (llmStorage === undefined ? loadLlmSettings() : loadLlmSettings(llmStorage)));
+  const sentReminders = useRef<Set<string>>(new Set());
   const sound = useRef<Sound | null>(null);
   const opener = useRef<{ el: HTMLElement | SVGElement; id: string | null } | null>(null);
   const liveRef = useRef<HTMLDivElement>(null);
@@ -74,24 +97,39 @@ export function App({
   clockRef.current = clock;
   const mode = initialMotion({ matches: osReduced }, savedMotion);
 
+  // Items and saved settings, on start and after a restore.
+  const loadFrom = async (from: Repository) => {
+    const [list, motion, savedView, savedSound, reminders, sent] = await Promise.all([
+      from.list(),
+      from.getSetting(SETTING_MOTION),
+      from.getSetting(SETTING_VIEW),
+      from.getSetting(SETTING_SOUND),
+      from.getSetting(SETTING_REMINDERS),
+      from.getSetting(SETTING_REMINDERS_SENT),
+    ]);
+    return { list, motion, savedView, savedSound, reminders, sent };
+  };
+
+  const applyLoaded = (loaded: Awaited<ReturnType<typeof loadFrom>>) => {
+    const { list, motion, savedView, savedSound, reminders, sent } = loaded;
+    setItems(list);
+    if (motion === 'full' || motion === 'reduced') setSavedMotion(motion);
+    if (savedView === 'scene' || savedView === 'list') setView(savedView);
+    if (savedSound === 'on' && isSoundSupported()) setSoundOn(true);
+    setRemindersOn(reminders === 'on');
+    sentReminders.current = new Set(Array.isArray(sent) ? sent.filter((k): k is string => typeof k === 'string') : []);
+  };
+
   // Load data and saved settings once.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const opened = await open();
-      const [list, motion, savedView, savedSound] = await Promise.all([
-        opened.repo.list(),
-        opened.repo.getSetting(SETTING_MOTION),
-        opened.repo.getSetting(SETTING_VIEW),
-        opened.repo.getSetting(SETTING_SOUND),
-      ]);
+      const loaded = await loadFrom(opened.repo);
       if (cancelled) return;
-      setItems(list);
-      if (motion === 'full' || motion === 'reduced') setSavedMotion(motion);
-      if (savedView === 'scene' || savedView === 'list') setView(savedView);
+      applyLoaded(loaded);
       setPersistent(opened.persistent);
       setRepo(opened.repo);
-      if (savedSound === 'on' && isSoundSupported()) setSoundOn(true);
     })();
     return () => {
       cancelled = true;
@@ -135,6 +173,16 @@ export function App({
   }, []);
 
   const vm = useMemo(() => deriveViewModel(items, now, userZone, locale), [items, now, userZone, locale]);
+
+  // capture-and-export R3.2: reminders run on the same one-second clock while the tab is open.
+  useEffect(() => {
+    if (!repo || !remindersOn || permission !== 'granted') return;
+    const fired = dueReminders(items, now, sentReminders.current);
+    if (fired.length === 0) return;
+    for (const key of keysToMark(items, fired)) sentReminders.current.add(key);
+    for (const r of fired) void notifier.show(r.title, r.body, r.key).catch(() => {});
+    void repo.putSetting(SETTING_REMINDERS_SENT, pruneSent(items, sentReminders.current));
+  }, [now, items, repo, remindersOn, permission]);
   const layout = useMemo(() => layoutScene(items, now), [items, now]);
   const entriesById = useMemo(() => new Map(vm.entries.map((e) => [e.id, e])), [vm]);
 
@@ -236,6 +284,49 @@ export function App({
     return null;
   };
 
+  const unresolved = items.filter((i) => i.resolution === null);
+  const today = () => toLocal(clock(), userZone).date;
+
+  // capture-and-export R2.1: unresolved items only; demo items carry [Demo] (R2.2).
+  const exportIcs = () => downloadText(`deadline-graveyard-${today()}.ics`, toIcs(unresolved, clock()), 'text/calendar;charset=utf-8');
+
+  const downloadBackup = async () => {
+    if (!repo) return;
+    downloadText(`deadline-graveyard-backup-${today()}.json`, serializeBackup(await repo.exportBackup(clock())), 'application/json');
+  };
+
+  // R4.2: the dialog confirms first; the repository validates the whole file before writing.
+  const restoreBackup = async (text: string) => {
+    if (!repo) return { ok: false as const, error: { code: 'invalid-backup' as const, path: '$', reason: 'storage is not open yet' } };
+    const result = await repo.importBackup(text);
+    if (result.ok) {
+      prevStatuses.current = null;
+      applyLoaded(await loadFrom(repo));
+    }
+    return result;
+  };
+
+  // R3.1: permission is requested only from this click.
+  const toggleReminders = async () => {
+    if (remindersOn) {
+      setRemindersOn(false);
+      void repo?.putSetting(SETTING_REMINDERS, 'off');
+      return;
+    }
+    const state = notifier.permission() === 'granted' ? 'granted' : await notifier.request();
+    setPermission(state);
+    if (state !== 'granted') return;
+    setRemindersOn(true);
+    void repo?.putSetting(SETTING_REMINDERS, 'on');
+  };
+
+  const saveLlm = (next: typeof llmSettings) => {
+    setLlmSettings(next);
+    return llmStorage === undefined ? saveLlmSettings(next) : saveLlmSettings(next, llmStorage);
+  };
+
+  const llm = useMemo(() => createProvider(llmSettings, userZone), [llmSettings, userZone]);
+
   const chooseView = (next: ViewChoice) => {
     setView(next);
     void repo?.putSetting(SETTING_VIEW, next);
@@ -291,6 +382,9 @@ export function App({
           >
             Add deadline
           </button>
+          <button type="button" class="btn" disabled={!repo} onClick={(e) => openDialog({ kind: 'tools' }, e.currentTarget, null)}>
+            Export and settings
+          </button>
           <div class="segmented" role="group" aria-label="View">
             <button type="button" class="btn" aria-pressed={view === 'scene'} onClick={() => chooseView('scene')}>
               Scene and list
@@ -344,7 +438,10 @@ export function App({
       </main>
       <div ref={liveRef} class="visually-hidden" aria-live="polite" role="status" />
       <footer class="footer">
-        <p>Your deadlines stay in this browser. Sound is synthesised in the browser and is off until you turn it on.</p>
+        <p>
+          Your deadlines stay in this browser. Sound is synthesised in the browser and is off until you turn it on. Reminders, when on, fire only while
+          this tab is open.
+        </p>
       </footer>
       {detailEntry ? (
         <DetailDialog
@@ -373,6 +470,21 @@ export function App({
           userZone={userZone}
           onCancel={() => setDialog(null)}
           onSave={(values) => saveForm(values, dialog.id)}
+          capture={{ fetchMeta, llm, llmName: PROVIDER_SHORT[llm.id] }}
+        />
+      ) : null}
+      {dialog?.kind === 'tools' ? (
+        <ToolsDialog
+          unresolvedCount={unresolved.length}
+          onExportIcs={exportIcs}
+          onDownloadBackup={downloadBackup}
+          onRestore={restoreBackup}
+          remindersOn={remindersOn}
+          permission={permission}
+          onToggleReminders={toggleReminders}
+          llm={llmSettings}
+          onSaveLlm={saveLlm}
+          onClose={() => setDialog(null)}
         />
       ) : null}
     </>

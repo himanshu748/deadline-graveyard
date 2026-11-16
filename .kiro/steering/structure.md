@@ -50,6 +50,7 @@ deadline-graveyard/
 
 - Unit tests are colocated as `*.test.ts(x)` next to the module, or under `tests/` when they span modules. Vitest includes `src/**/*.test.{ts,tsx}` and `tests/**/*.test.{ts,tsx}`.
 - Property tests use fast-check and are named `*.property.test.ts`.
+- The suite timeout is 60 s (`testTimeout` in `vite.config.ts`) because heavy properties take far longer than the 5 s default when all workers run on a busy machine. Never lower a property's `numRuns` to make it fit a timeout.
 - UI tests start with `// @vitest-environment happy-dom`.
 - E2E specs live in `e2e/*.spec.ts` and run against `vite preview` on port 4173.
 - Each EARS requirement maps to at least one task and one test. The spec-keeper agent checks this. A test names what it validates in its title or in a comment: `// Validates: deadline-engine R1.4` (or `P4` for a deadline-engine correctness property).

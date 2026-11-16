@@ -548,3 +548,73 @@ input[type='checkbox'] {
   font-size: var(--step--1);
   text-align: center;
 }
+
+/* Add from URL and the export and settings dialog (capture-and-export) */
+
+.capture {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px dashed var(--stone-400);
+  border-radius: var(--radius);
+}
+
+.capture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.capture .hint,
+.tools-section .hint {
+  color: var(--mist-300);
+  font-size: var(--step--1);
+}
+
+.capture-status:empty {
+  display: none;
+}
+
+.capture-status {
+  margin: 0;
+}
+
+.capture-candidates {
+  border: 1px solid var(--stone-400);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+}
+
+.capture-candidates ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tools-section {
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--stone-400);
+}
+
+.tools-section h3 {
+  font-size: var(--step-1);
+  margin-bottom: var(--space-2);
+}
+
+.file-button {
+  cursor: pointer;
+}
+
+.file-button:focus-within {
+  box-shadow: var(--focus-ring);
+}
+
+.confirm {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--ember-400);
+  border-radius: var(--radius);
+}

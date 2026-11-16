@@ -43,6 +43,52 @@ npx playwright install chromium   # once, before the first e2e run
 npm run test:e2e   # Playwright end-to-end tests with axe accessibility checks
 ```
 
+## Getting deadlines in and out
+
+All of these are in the add form or behind the **Export and settings** button. Nothing needs an account or a key.
+
+### Add from a link
+
+Paste an event URL in the add form and press **Fill in from the link**. The app asks `/api/fetch-meta`, which reads the page title and any dates the page exposes (Open Graph, schema.org JSON-LD `Event`, event meta tags, `<time>` elements) and returns only those fields. You check and edit everything before you save.
+
+- Where it works: `npm run dev` (a Vite dev middleware serves `/api/fetch-meta`) and the hosted app (Vercel function `api/fetch-meta.ts`). `npm run preview` has no API, so the button explains that and the other paths take over.
+- Safety limits, for the first URL and every redirect: http or https on ports 80, 443, 8080 or 8443, no user name or password in the URL, the host must resolve only to public addresses (private, loopback, link-local, cloud metadata `169.254.169.254`, CGNAT, multicast and IPv6 unique-local are refused), the connection is pinned to the checked addresses, 5 seconds in total, at most 3 redirects, at most 1 MB read, HTML only.
+- If the page cannot be read or has no date, the link is kept and you can **paste page text** (the app finds dates in it with rules, offline) or type the date yourself. The zone defaults to yours.
+- Try it: `curl 'http://localhost:5173/api/fetch-meta?url=https://example.com'` while `npm run dev` runs returns `{"source":"https://example.com/","title":"Example Domain"}`.
+
+### Calendar export (.ics)
+
+**Export to calendar (.ics)** downloads one event per unresolved deadline. Timed deadlines are written in UTC, so any calendar app shows the right moment in your zone; date-only deadlines become all-day events. Demo items are marked `[Demo]`. The file has no `VTIMEZONE` blocks; the deadline's own zone is kept in a custom `X-DG-TZID` line that other apps ignore. Importing it into a real calendar app has not been tested yet.
+
+### Backup and restore
+
+**Download backup** saves every deadline and setting as JSON. **Restore backup** asks before replacing anything and, if the file is not a valid backup, says which field failed and changes nothing. AI keys are never in the backup.
+
+### Reminders (browser notifications)
+
+Off by default. Turning on **Browser reminders** is the only thing that asks for notification permission. You then get one notification when a candle enters its last 24 hours and one an hour before it burns out.
+
+Limits, stated plainly:
+
+- Reminders only fire while the app is open in a tab. There is no push server, so a closed tab cannot remind you.
+- Browsers slow timers in background tabs, so a reminder can arrive a minute or more late.
+- If you open the app for the first time inside a deadline's last hour, you get only the 1 hour reminder for it, not both.
+- If notifications are blocked or unsupported, the app says so and the candles still show what is due.
+
+The service worker (`public/sw.js`) only shows these notifications and focuses the app when you click one. It caches nothing and has no push subscription.
+
+### Optional AI helper
+
+The default provider is **None**: rule-based, offline, no key. Everything in the app works with it. In **Export and settings > Optional AI helper** you can pick one of these free options instead. It is only used when you press **Ask ...** next to text you pasted in the add form, and its answer is filled in as a suggestion for you to check.
+
+| Provider | What you need | Default model | Notes |
+|---|---|---|---|
+| Google Gemini | A free API key from [Google AI Studio](https://aistudio.google.com/apikey) | `gemini-3.5-flash-lite` | Free of charge on the free tier. Google's pricing page says free-tier content is used to improve its products. |
+| Groq | A free API key from [console.groq.com](https://console.groq.com/keys) | `openai/gpt-oss-20b` | Listed in Groq's Free Plan rate limits (30 requests per minute, 1,000 per day). |
+| Ollama | [Ollama](https://ollama.com) running on your computer and `ollama pull llama3.2` | `llama3.2` | Ollama accepts browser requests from `127.0.0.1` by default. For the hosted app, start it with `OLLAMA_ORIGINS=https://<app-domain> ollama serve`. |
+
+Keys are stored only in this browser (`localStorage`) and sent only to that provider. If a call fails or returns something that does not parse, the app falls back to the rule-based result and tells you. The provider calls were tested with a fake `fetch` only; no real key was used while building.
+
 ### Kiro hook scripts
 
 The hooks in `.kiro/hooks/` call Node scripts in `scripts/hooks/` that also run on their own. Their pure logic is unit-tested by `npm test` (`tests/hooks/`).
@@ -120,10 +166,20 @@ The Fontsource packages are not dependencies; only the three font files were cop
 |---|---|---|---|
 | [Playwright MCP](https://github.com/microsoft/playwright-mcp) (`@playwright/mcp`) | 0.0.85, run with npx | Apache-2.0 | Browser automation for the design-review agent |
 | [Context7](https://context7.com) remote MCP server | hosted service | Server package MIT; service used on its free keyless access | Library docs lookup for confirming APIs |
+| [Vercel CLI](https://vercel.com/docs/cli) (`vercel`) | 65.16.0, run with `npx vercel@latest build` in a temp copy | Apache-2.0 | Local build check of `api/fetch-meta.ts` without logging in or deploying (steps in `.kiro/specs/capture-and-export/design.md`). Not a dependency. |
+
+No library was added for add-from-URL, `.ics`, notifications or the AI helper: HTML extraction, the address checks, the iCalendar writer and parser, and the provider calls are written for this repo with Node built-ins (`node:dns`, `node:http`, `node:https`) and browser APIs (`fetch`, `Notification`, service workers).
 
 ## Project status
 
-Spec phase done: steering, feature specs, hooks, custom agents and MCP config are in `.kiro/`. The deadline engine (`src/domain/`, pure state machine, timezones and DST, with fast-check property tests) and offline storage (`src/storage/`, IndexedDB with JSON backup and restore) are implemented and tested. The graveyard scene (SVG, GSAP motion with reduced-motion support, optional synthesised sound) and the screen-reader list view with keyboard navigation, add and edit form and detail dialog are implemented and persist to IndexedDB. Demo data, add from URL, `.ics` export, notifications and the Seance are not built yet. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
+Spec phase done: steering, feature specs, hooks, custom agents and MCP config are in `.kiro/`. The deadline engine (`src/domain/`, pure state machine, timezones and DST, with fast-check property tests) and offline storage (`src/storage/`, IndexedDB with JSON backup and restore) are implemented and tested. The graveyard scene (SVG, GSAP motion with reduced-motion support, optional synthesised sound) and the screen-reader list view with keyboard navigation, add and edit form and detail dialog are implemented and persist to IndexedDB. Add from a link (with paste-text and manual fallbacks), `.ics` export, backup and restore, opt-in reminders and the optional AI helper (default None) are implemented and tested. Demo data and the Seance are not built yet. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
+
+Not verified yet, and needing a person or a deploy:
+
+- `api/fetch-meta.ts` on Vercel's servers. It passed a local `vercel build` and a load test of the built function, but nothing has been deployed. Vercel warns that `"engines": { "node": ">=22.12.0" }` makes it use Node.js 26.x.
+- Importing the `.ics` file into Google Calendar, Apple Calendar or Outlook.
+- A real OS notification after granting permission.
+- A live call to Gemini, Groq or Ollama with a real key or a running Ollama.
 
 ## License
 

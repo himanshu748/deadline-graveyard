@@ -16,6 +16,8 @@
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "rootDir": ".",
     "skipLibCheck": true,
     "allowJs": true,
     "checkJs": true,
@@ -23,6 +25,7 @@
   },
   "include": [
     "src",
+    "api",
     "tests",
     "e2e",
     "scripts",

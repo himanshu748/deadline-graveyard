@@ -15,7 +15,11 @@ export default defineConfig([
     languageOptions: { globals: globals.browser },
   },
   {
-    files: ['*.{js,mjs,ts}', 'scripts/**/*.{js,mjs}', 'e2e/**/*.ts', 'tests/**/*.ts'],
+    files: ['*.{js,mjs,ts}', 'api/**/*.ts', 'scripts/**/*.{js,mjs}', 'e2e/**/*.ts', 'tests/**/*.ts'],
     languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['public/sw.js'],
+    languageOptions: { globals: globals.serviceworker },
   },
 ]);
