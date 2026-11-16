@@ -40,6 +40,18 @@ test.afterEach(async ({ page }) => {
 test('full motion: a passive viewer sees 5 captioned steps within 60 s, then keeps the labelled demo', async ({ page }) => {
   test.setTimeout(150_000);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  // The page itself records each caption title as it appears, so a slow axe scan or screenshot in
+  // the test cannot make it miss a step. (Sampling from the test missed step 1 once the suite grew
+  // to 23 tests: the scan below took longer than the 9 s step under parallel load, 16 Nov 2026.)
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { __introTitles: string[] }).__introTitles = seen;
+    const record = () => {
+      const title = document.querySelector('dialog.intro h2')?.textContent ?? '';
+      if (title && seen.at(-1) !== title) seen.push(title);
+    };
+    new MutationObserver(record).observe(document, { childList: true, subtree: true, characterData: true });
+  });
   await page.goto('/');
   const dialog = introDialog(page);
   await expect(dialog).toBeVisible();
@@ -50,16 +62,14 @@ test('full motion: a passive viewer sees 5 captioned steps within 60 s, then kee
   expect(await seriousViolations(page)).toEqual([]);
   await page.screenshot({ path: 'test-results/first-visit-step1.png' });
 
-  // Watch the captions without pressing anything until the closing question appears (R1.2).
-  const seen: string[] = [];
+  // Wait without pressing anything until the closing question appears (R1.2).
   const heading = dialog.getByRole('heading', { level: 2 });
   while (Date.now() - started < 70_000) {
-    const title = (await heading.textContent()) ?? '';
-    if (title === 'Keep the demo?') break;
-    if (seen.at(-1) !== title) seen.push(title);
+    if ((await heading.textContent()) === 'Keep the demo?') break;
     await page.waitForTimeout(250);
   }
   const elapsed = Date.now() - started;
+  const seen = await page.evaluate(() => (window as unknown as { __introTitles: string[] }).__introTitles.filter((t) => t !== 'Keep the demo?'));
   expect(seen).toEqual(TOUR_TITLES);
   expect(elapsed).toBeLessThanOrEqual(60_000);
   await expect(heading).toHaveText('Keep the demo?');
