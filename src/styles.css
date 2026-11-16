@@ -618,3 +618,190 @@ input[type='checkbox'] {
   border: 1px solid var(--ember-400);
   border-radius: var(--radius);
 }
+
+/* The Séance (seance spec) */
+
+.invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) var(--space-5) 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--lantern-300);
+  border-radius: var(--radius);
+  background: var(--night-800);
+}
+
+.invite p {
+  flex: 1 1 20rem;
+  margin: 0;
+}
+
+.invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.candle-circle {
+  display: block;
+  width: 100%;
+  max-width: 15rem;
+  height: auto;
+  margin: 0 auto var(--space-3);
+}
+
+.candle-circle .cc-flame {
+  transition: opacity 200ms ease-out;
+}
+
+.candle-circle[data-motion='reduced'] .cc-flame {
+  transition: none;
+}
+
+.seance-progress {
+  margin: 0 0 var(--space-1);
+  color: var(--mist-300);
+  font-size: var(--step--1);
+}
+
+dialog.panel h3[tabindex='-1']:focus {
+  outline: none;
+}
+
+dialog.panel .hint {
+  color: var(--mist-300);
+  font-size: var(--step--1);
+}
+
+.seance-picks {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--stone-400);
+  border-radius: var(--radius);
+}
+
+.seance-picks legend {
+  font-weight: 700;
+  padding: 0 var(--space-1);
+}
+
+.seance-picks ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.seance-picks li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.seance-picks input[type='checkbox'] {
+  flex: none;
+  margin-top: 0.2rem;
+}
+
+.pick-meta {
+  display: block;
+  color: var(--mist-300);
+  font-size: var(--step--1);
+}
+
+.seance-promise {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  margin: var(--space-3) 0 0;
+}
+
+.plan-section {
+  margin-top: var(--space-4);
+}
+
+.plan-section h4 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--step-1);
+  font-weight: 700;
+  color: var(--mist-300);
+  border-bottom: 1px solid var(--night-700);
+  padding-bottom: var(--space-1);
+}
+
+.plan-steps,
+.plan-lessons {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.plan-lessons {
+  margin-bottom: var(--space-3);
+}
+
+.plan-step {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.plan-step p {
+  margin: 0;
+}
+
+.plan-step-title {
+  font-weight: 700;
+}
+
+.plan-step > .btn {
+  justify-self: start;
+}
+
+.plan-text {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.seance-llm {
+  margin-top: var(--space-4);
+}
+
+.seance-phrased {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  border: 1px solid var(--ghost-200);
+  border-radius: var(--radius);
+}
+
+.seance-phrased figcaption {
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.seance-history {
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--stone-400);
+}
+
+.seance-history summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding: var(--space-2) 0;
+}
+
+.seance-history ul {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.seance-history-date {
+  margin: 0;
+  font-weight: 700;
+}

@@ -89,11 +89,12 @@ export function extractionPrompt(text: string): string {
 }
 
 export function planPrompt(prompt: PlanPrompt): string {
+  // The Séance sends no answers (only its plan text); the block is left out when empty.
+  const answers = prompt.answers.length > 0 ? ['', 'Answers:', ...prompt.answers.map((a, i) => `${i + 1}. ${a.slice(0, 1_000)}`)] : [];
   return [
-    'Rewrite this weekly plan as 3 to 6 short, kind, practical lines. Keep every deadline and date exactly as given and do not add new ones.',
-    '',
-    'Answers:',
-    ...prompt.answers.map((a, i) => `${i + 1}. ${a.slice(0, 1_000)}`),
+    'Rewrite this weekly plan as short, kind, practical lines. Keep every deadline and date exactly as given and do not add new ones.',
+    'Keep every deadline title exactly as written, including "(Demo)", in the same order.',
+    ...answers,
     '',
     'Plan:',
     ...prompt.planLines.map((l) => `- ${l.slice(0, 300)}`),

@@ -84,7 +84,7 @@ export function ToolsDialog(props: ToolsDialogProps) {
         ? 'This browser would not store the setting (storage is blocked), so it lasts until the tab closes.'
         : needsKey
           ? 'Saved. Without a key the app keeps using the rule-based finder.'
-          : `Saved. ${draft.provider === 'none' ? 'No AI is used.' : `${PROVIDER_SHORT[draft.provider]} is only asked when you press its button in the add form.`}`,
+          : `Saved. ${draft.provider === 'none' ? 'No AI is used.' : `${PROVIDER_SHORT[draft.provider]} is only asked when you press its button in the add form or on a Séance plan.`}`,
     );
   };
 
@@ -151,7 +151,7 @@ export function ToolsDialog(props: ToolsDialogProps) {
 
       <section class="tools-section" aria-labelledby="tools-ai">
         <h3 id="tools-ai">Optional AI helper</h3>
-        <p class="hint">Off by default. Everything works without it. When on, it only reads text you paste in the add form and you confirm whatever it suggests.</p>
+        <p class="hint">Off by default. Everything works without it. When on, it only reads text you paste in the add form, or a finished Séance plan when you ask it to rephrase one, and you check whatever it suggests.</p>
         <form onSubmit={saveLlm} noValidate>
           <div class="field">
             <label for="llm-provider">Provider</label>

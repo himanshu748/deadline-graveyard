@@ -14,6 +14,9 @@ import { createProvider } from '../llm/providers.ts';
 import { loadLlmSettings, saveLlmSettings } from '../llm/settings.ts';
 import { browserNotifier, type Notifier, type PermissionState } from '../notifications/notify.ts';
 import { dueReminders, keysToMark, pruneSent } from '../notifications/reminders.ts';
+import { addRecord, lastSeanceAt, parseHistory, SETTING_SEANCE_HISTORY } from '../seance/history.ts';
+import { buildPlan, isSeanceDue, type PlanStep, type SeanceAnswers, type SeanceRecord } from '../seance/plan.ts';
+import { Seance } from '../seance/Seance.tsx';
 import { serializeBackup } from '../storage/backup.ts';
 import { openRepository, type Repository } from '../storage/repository.ts';
 import { createAnnouncer, type Announcer } from './announcer.ts';
@@ -46,7 +49,7 @@ export interface AppProps {
   llmStorage?: Pick<Storage, 'getItem' | 'setItem'> | null;
 }
 
-type DialogState = null | { kind: 'detail'; id: string } | { kind: 'form'; id?: string } | { kind: 'tools' };
+type DialogState = null | { kind: 'detail'; id: string } | { kind: 'form'; id?: string } | { kind: 'tools' } | { kind: 'seance' };
 
 const ACTION_ERRORS: Record<ActionErrorCode, string> = {
   resolved: 'This deadline is already resolved.',
@@ -86,6 +89,8 @@ export function App({
   const [remindersOn, setRemindersOn] = useState(false);
   const [permission, setPermission] = useState<PermissionState>(() => notifier.permission());
   const [llmSettings, setLlmSettings] = useState(() => (llmStorage === undefined ? loadLlmSettings() : loadLlmSettings(llmStorage)));
+  const [seances, setSeances] = useState<SeanceRecord[]>([]);
+  const [inviteHidden, setInviteHidden] = useState(false);
   const sentReminders = useRef<Set<string>>(new Set());
   const sound = useRef<Sound | null>(null);
   const opener = useRef<{ el: HTMLElement | SVGElement; id: string | null } | null>(null);
@@ -99,20 +104,22 @@ export function App({
 
   // Items and saved settings, on start and after a restore.
   const loadFrom = async (from: Repository) => {
-    const [list, motion, savedView, savedSound, reminders, sent] = await Promise.all([
+    const [list, motion, savedView, savedSound, reminders, sent, history] = await Promise.all([
       from.list(),
       from.getSetting(SETTING_MOTION),
       from.getSetting(SETTING_VIEW),
       from.getSetting(SETTING_SOUND),
       from.getSetting(SETTING_REMINDERS),
       from.getSetting(SETTING_REMINDERS_SENT),
+      from.getSetting(SETTING_SEANCE_HISTORY),
     ]);
-    return { list, motion, savedView, savedSound, reminders, sent };
+    return { list, motion, savedView, savedSound, reminders, sent, history };
   };
 
   const applyLoaded = (loaded: Awaited<ReturnType<typeof loadFrom>>) => {
-    const { list, motion, savedView, savedSound, reminders, sent } = loaded;
+    const { list, motion, savedView, savedSound, reminders, sent, history } = loaded;
     setItems(list);
+    setSeances(parseHistory(history));
     if (motion === 'full' || motion === 'reduced') setSavedMotion(motion);
     if (savedView === 'scene' || savedView === 'list') setView(savedView);
     if (savedSound === 'on' && isSoundSupported()) setSoundOn(true);
@@ -327,6 +334,43 @@ export function App({
 
   const llm = useMemo(() => createProvider(llmSettings, userZone), [llmSettings, userZone]);
 
+  // seance R1.3, R3.1: the plan is built from the items at this instant and saved with the answers.
+  const finishSeance = async (answers: SeanceAnswers): Promise<{ record: SeanceRecord; error: string | null }> => {
+    const at = clock();
+    setNow(at);
+    const record: SeanceRecord = { id: newId(), at, answers, plan: buildPlan(items, answers, at, { locale, zone: userZone }) };
+    const next = addRecord(seances, record);
+    setSeances(next);
+    try {
+      await repo?.putSetting(SETTING_SEANCE_HISTORY, next);
+      return { record, error: null };
+    } catch {
+      return { record, error: 'The plan is ready, but this browser could not save it. It will be lost when the tab closes.' };
+    }
+  };
+
+  // seance R2.6: one confirmed action at a time, through the same domain rules as the list view.
+  const applySeanceStep = async (step: PlanStep): Promise<string | null> => {
+    const item = findItem(step.itemId);
+    if (!item) return 'That deadline no longer exists.';
+    const at = clock();
+    setNow(at);
+    switch (step.action) {
+      case 'revive':
+        return applyResult(revive(item, at));
+      case 'bury':
+        return applyResult(bury(item, at));
+      case 'epitaph':
+        if (item.epitaph?.trim()) return 'This grave already has an epitaph. Change it from its details instead.';
+        if (!step.epitaph) return ACTION_ERRORS.invalid;
+        return applyResult(setEpitaph(item, step.epitaph, at));
+      case 'work':
+        return null;
+    }
+  };
+
+  const seanceDue = isSeanceDue(lastSeanceAt(seances), now);
+
   const chooseView = (next: ViewChoice) => {
     setView(next);
     void repo?.putSetting(SETTING_VIEW, next);
@@ -385,6 +429,9 @@ export function App({
           <button type="button" class="btn" disabled={!repo} onClick={(e) => openDialog({ kind: 'tools' }, e.currentTarget, null)}>
             Export and settings
           </button>
+          <button type="button" class="btn" disabled={!repo} data-return-id="seance" onClick={(e) => openDialog({ kind: 'seance' }, e.currentTarget, null)}>
+            Hold a séance
+          </button>
           <div class="segmented" role="group" aria-label="View">
             <button type="button" class="btn" aria-pressed={view === 'scene'} onClick={() => chooseView('scene')}>
               Scene and list
@@ -428,6 +475,24 @@ export function App({
           </p>
         ) : null}
         {!repo ? <p class="list-view">Opening the graveyard...</p> : null}
+        {repo && seanceDue && !inviteHidden && items.length > 0 ? (
+          <div class="invite" data-testid="seance-invite">
+            <p>
+              {seances.length === 0
+                ? 'The candles are ready for your first séance: three questions that become next week\'s plan.'
+                : 'A week has passed since your last séance. Three questions, then next week\'s plan.'}
+            </p>
+            <div class="invite-actions">
+              {/* A finished séance removes this banner, so focus then returns to "Hold a séance". */}
+              <button type="button" class="btn btn-small btn-primary" onClick={(e) => openDialog({ kind: 'seance' }, e.currentTarget, 'seance')}>
+                Begin the séance
+              </button>
+              <button type="button" class="btn btn-small" onClick={() => setInviteHidden(true)}>
+                Not now
+              </button>
+            </div>
+          </div>
+        ) : null}
         {repo && view === 'scene' ? (
           <div class="scene-wrap">
             <p class="scene-hint">Scroll sideways to see the whole graveyard, or use the list below.</p>
@@ -484,6 +549,22 @@ export function App({
           onToggleReminders={toggleReminders}
           llm={llmSettings}
           onSaveLlm={saveLlm}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === 'seance' ? (
+        <Seance
+          items={items}
+          now={now}
+          entries={entriesById}
+          userZone={userZone}
+          locale={locale}
+          history={seances}
+          mode={mode}
+          llm={llm}
+          llmName={PROVIDER_SHORT[llm.id]}
+          onFinish={finishSeance}
+          onApply={applySeanceStep}
           onClose={() => setDialog(null)}
         />
       ) : null}
