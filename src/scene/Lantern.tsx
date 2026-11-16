@@ -3,7 +3,7 @@ import { PALETTE } from '../ui/tokens.ts';
 import { truncate, type SceneNode } from './layout.ts';
 import { LabelPlate } from './parts.tsx';
 
-export function Lantern({ node }: { node: SceneNode }) {
+export function Lantern() {
   return (
     <g data-lit="true">
       <line x1="0" y1="0" x2="0" y2="18" stroke={PALETTE['stone-400']} stroke-width="2" />
@@ -13,7 +13,11 @@ export function Lantern({ node }: { node: SceneNode }) {
       <rect x="-10" y="27" width="20" height="28" rx="3" fill={PALETTE['lantern-300']} />
       <ellipse cx="0" cy="42" rx="5" ry="8" fill={PALETTE['candle-400']} />
       <rect x="-12" y="60" width="24" height="5" rx="2" fill={PALETTE['stone-400']} />
-      <LabelPlate y={94} width={96} text={truncate(node.title, 8)} small />
     </g>
   );
+}
+
+/** The lantern's visible text. Scene.tsx draws it outside the button element (WCAG 2.5.3). */
+export function LanternText({ node }: { node: SceneNode }) {
+  return <LabelPlate y={94} width={96} text={truncate(node.title, 8)} small />;
 }

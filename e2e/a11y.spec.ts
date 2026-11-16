@@ -1,7 +1,9 @@
 // Validates: accessible-list-view R2.1 to R2.4, R3.4; graveyard-scene R3.4 (in a real browser).
-// Each test adds its own deadlines through the form, so no demo data is involved.
+// Each test starts from an empty graveyard (intro skipped, demo cleared, see helpers.ts) and adds
+// its own deadlines through the form, so no demo data is involved.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { startEmpty } from './helpers.ts';
 
 async function addDeadline(page: Page, title: string, daysAhead: number, hoursAhead = 0) {
   const due = new Date(Date.now() + daysAhead * 86_400_000 + hoursAhead * 3_600_000);
@@ -22,8 +24,7 @@ test.beforeEach(async ({ page }) => {
   });
   page.on('pageerror', (e) => errors.push(e.message));
   (page as Page & { errors?: string[] }).errors = errors;
-  await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Add deadline' })).toBeEnabled();
+  await startEmpty(page);
 });
 
 test.afterEach(async ({ page }) => {

@@ -8,6 +8,7 @@ import { DUE, DAY, makeItem } from '../domain/test-items.ts';
 import type { Notifier, PermissionState } from '../notifications/notify.ts';
 import { memoryRepository, type Repository } from '../storage/repository.ts';
 import { App, SETTING_REMINDERS } from './App.tsx';
+import { SETTING_INTRO_SEEN } from './intro/demo-seed.ts';
 
 const NOW = DUE - 3 * DAY;
 
@@ -45,6 +46,8 @@ function memoryStorage() {
 
 async function mount(opts: { repo?: Repository; fetchMeta?: (url: string) => Promise<CaptureResult>; notifier?: Notifier; clock?: () => number } = {}) {
   const repo = opts.repo ?? memoryRepository();
+  // A returning visitor: the first-visit intro and its demo items are tested in intro/*.test.tsx.
+  await repo.putSetting(SETTING_INTRO_SEEN, true);
   const root = document.createElement('div');
   document.body.append(root);
   const fetchMeta = vi.fn(opts.fetchMeta ?? (async (): Promise<CaptureResult> => ({ ok: false, error: 'network' })));

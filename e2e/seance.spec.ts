@@ -1,8 +1,10 @@
 // Validates: seance R1.1, R1.2, R1.3 (and R2.3, R2.6) in a real browser, keyboard only, plus an
-// axe scan of every step of the Séance dialog with normal and reduced motion. Deadlines are added
-// through the form first, as in a11y.spec.ts, so no demo data is involved.
+// axe scan of every step of the Séance dialog with normal and reduced motion. Each test starts
+// from an empty graveyard (intro skipped, demo cleared, see helpers.ts) and adds deadlines through
+// the form, as in a11y.spec.ts, so no demo data is involved.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { startEmpty } from './helpers.ts';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 /** The visually hidden ": Old essay" suffix is computed into the name with a space before the colon. */
@@ -55,8 +57,7 @@ test.afterEach(async ({ page }) => {
 });
 
 test('keyboard only: three questions, a skip, a plan and a confirmed epitaph', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Add deadline' })).toBeEnabled();
+  await startEmpty(page);
   await seed(page);
   await expect(page.getByTestId('seance-invite')).toContainText('first séance');
 
@@ -128,6 +129,9 @@ test('keyboard only: three questions, a skip, a plan and a confirmed epitaph', a
   await page.keyboard.press('Enter');
   await expect(engrave).toBeFocused();
   await page.keyboard.press('Enter');
+  // Wait for focus to reach the confirmation before pressing again; two back-to-back presses
+  // raced the focus move under load (seen once in a full parallel run on 16 Nov 2026).
+  await expect(dialog.getByRole('button', { name: 'Yes, engrave it' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(dialog.getByText('Engraved on its tombstone.')).toBeFocused();
 
@@ -146,8 +150,7 @@ test('keyboard only: three questions, a skip, a plan and a confirmed epitaph', a
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   test(`axe finds no serious or critical violations on any Séance step (${reducedMotion} motion)`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion });
-    await page.goto('/');
-    await expect(page.getByRole('button', { name: 'Add deadline' })).toBeEnabled();
+    await startEmpty(page);
     await seed(page);
     await page.getByRole('button', { name: 'Hold a séance' }).click();
     const dialog = page.getByRole('dialog', { name: 'The Séance' });

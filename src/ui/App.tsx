@@ -1,5 +1,5 @@
 // App shell: one clock, one item list, two renderings (scene and list) of the same view model.
-// Specs: graveyard-scene, accessible-list-view. Persistence: storage/repository.ts.
+// Specs: graveyard-scene, accessible-list-view, first-visit (intro and demo data). Persistence: storage/repository.ts.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { fetchPageMeta, type CaptureResult } from '../capture/client.ts';
 import { toIcs } from '../capture/ics.ts';
@@ -23,6 +23,9 @@ import { createAnnouncer, type Announcer } from './announcer.ts';
 import { DeadlineForm, type DeadlineValues } from './DeadlineForm.tsx';
 import { DetailDialog } from './DetailDialog.tsx';
 import { downloadText } from './download.ts';
+import { clearDemo, DEMO_IDS, demoItems, SETTING_INTRO_SEEN, shouldStartIntro, withDemo } from './intro/demo-seed.ts';
+import { Intro } from './intro/Intro.tsx';
+import { nextStep, stepFocus, type IntroStep } from './intro/steps.ts';
 import { LIST_HEADING_ID, ListView } from './ListView.tsx';
 import { PROVIDER_SHORT, ToolsDialog } from './ToolsDialog.tsx';
 import { CHANGE_MESSAGES, deriveViewModel, diffStatuses, type EntryAction } from './view-model.ts';
@@ -91,6 +94,10 @@ export function App({
   const [llmSettings, setLlmSettings] = useState(() => (llmStorage === undefined ? loadLlmSettings() : loadLlmSettings(llmStorage)));
   const [seances, setSeances] = useState<SeanceRecord[]>([]);
   const [inviteHidden, setInviteHidden] = useState(false);
+  /** first-visit: the current intro step, or null when no intro is running. */
+  const [intro, setIntro] = useState<IntroStep | null>(null);
+  const focusAfterIntro = useRef(false);
+  const addRef = useRef<HTMLButtonElement>(null);
   const sentReminders = useRef<Set<string>>(new Set());
   const sound = useRef<Sound | null>(null);
   const opener = useRef<{ el: HTMLElement | SVGElement; id: string | null } | null>(null);
@@ -104,7 +111,7 @@ export function App({
 
   // Items and saved settings, on start and after a restore.
   const loadFrom = async (from: Repository) => {
-    const [list, motion, savedView, savedSound, reminders, sent, history] = await Promise.all([
+    const [list, motion, savedView, savedSound, reminders, sent, history, introSeen] = await Promise.all([
       from.list(),
       from.getSetting(SETTING_MOTION),
       from.getSetting(SETTING_VIEW),
@@ -112,8 +119,9 @@ export function App({
       from.getSetting(SETTING_REMINDERS),
       from.getSetting(SETTING_REMINDERS_SENT),
       from.getSetting(SETTING_SEANCE_HISTORY),
+      from.getSetting(SETTING_INTRO_SEEN),
     ]);
-    return { list, motion, savedView, savedSound, reminders, sent, history };
+    return { list, motion, savedView, savedSound, reminders, sent, history, introSeen };
   };
 
   const applyLoaded = (loaded: Awaited<ReturnType<typeof loadFrom>>) => {
@@ -137,6 +145,19 @@ export function App({
       applyLoaded(loaded);
       setPersistent(opened.persistent);
       setRepo(opened.repo);
+      // first-visit R1.1, R2.1: an empty graveyard that never saw the intro gets 3 demo items and
+      // the tour. Without persistent storage this still runs; the flag then lasts for the session.
+      if (!shouldStartIntro(loaded.list.length, loaded.introSeen === true)) return;
+      const seededAt = clockRef.current();
+      const seeded = demoItems(seededAt, userZone);
+      setNow(seededAt);
+      setItems(seeded);
+      setIntro('moonrise');
+      try {
+        await Promise.all(seeded.map((item) => opened.repo.put(item)));
+      } catch {
+        setSaveError('Could not save the demo deadlines to this browser. They will be gone when the tab closes.');
+      }
     })();
     return () => {
       cancelled = true;
@@ -207,15 +228,27 @@ export function App({
     }
   }, [vm, repo, entriesById]);
 
-  // Restore focus to whatever opened the dialog (R2.4).
+  // Restore focus to whatever opened the dialog (R2.4). A dialog that hands over to the intro
+  // (Replay the intro) leaves focus to the intro panel.
   useEffect(() => {
     if (dialog !== null || !opener.current) return;
     const { el, id } = opener.current;
     opener.current = null;
+    if (intro !== null) return;
     const fallback = id ? document.querySelector<HTMLElement | SVGElement>(`[data-id="${CSS.escape(id)}"].scene-item, [data-return-id="${CSS.escape(id)}"]`) : null;
     const target = el.isConnected ? el : (fallback ?? document.getElementById(LIST_HEADING_ID));
     target?.focus();
   }, [dialog]);
+
+  // first-visit R1.5: when the intro ends or is skipped, focus goes to the first scene item (the
+  // first list entry in list only view, or Add deadline when the demo was cleared).
+  useEffect(() => {
+    if (intro !== null || !focusAfterIntro.current) return;
+    focusAfterIntro.current = false;
+    const target =
+      document.querySelector<SVGElement>('.scene-item[tabindex="0"]') ?? document.querySelector<HTMLElement>('.list-view .entry button') ?? addRef.current;
+    target?.focus();
+  }, [intro]);
 
   const persist = async (next: Item) => {
     setItems((list) => {
@@ -371,6 +404,49 @@ export function App({
 
   const seanceDue = isSeanceDue(lastSeanceAt(seances), now);
 
+  const demoCount = items.filter((i) => i.demo).length;
+
+  // first-visit R2.5: every demo item goes, and nothing else.
+  const clearDemoItems = async (): Promise<number> => {
+    const ids = items.filter((i) => i.demo).map((i) => i.id);
+    setItems((list) => clearDemo(list));
+    if (ids.length > 0) announcer.current?.announce(`Cleared ${ids.length} demo deadline${ids.length === 1 ? '' : 's'}.`);
+    try {
+      await Promise.all(ids.map((id) => repo?.remove(id)));
+    } catch {
+      setSaveError('Could not remove the demo deadlines from this browser. They may come back after a reload.');
+    }
+    return ids.length;
+  };
+
+  // first-visit R1.5, R2.4: the flag is set however the intro ends, then focus goes to the scene.
+  const endIntro = (clear: boolean) => {
+    setIntro(null);
+    focusAfterIntro.current = true;
+    void repo?.putSetting(SETTING_INTRO_SEEN, true).catch(() => {});
+    if (clear) void clearDemoItems();
+    else if (demoCount > 0) announcer.current?.announce('The demo deadlines stay, labelled Demo. Clear demo removes them.');
+  };
+
+  // first-visit R1.6, R2.6: the menu replays the intro with fresh demo items (the dialog has
+  // already asked when other items exist). Old demo items are replaced, never doubled.
+  const replayIntro = () => {
+    const at = clock();
+    setNow(at);
+    const fresh = demoItems(at, userZone);
+    const stale = items.filter((i) => i.demo && !fresh.some((f) => f.id === i.id)).map((i) => i.id);
+    setItems((list) => withDemo(list, at, userZone));
+    setDialog(null);
+    setIntro('moonrise');
+    void (async () => {
+      try {
+        await Promise.all([...stale.map((id) => repo?.remove(id)), ...fresh.map((item) => repo?.put(item))]);
+      } catch {
+        setSaveError('Could not save the demo deadlines to this browser. They will be gone when the tab closes.');
+      }
+    })();
+  };
+
   const chooseView = (next: ViewChoice) => {
     setView(next);
     void repo?.putSetting(SETTING_VIEW, next);
@@ -419,6 +495,7 @@ export function App({
         </div>
         <div class="toolbar">
           <button
+            ref={addRef}
             type="button"
             class="btn btn-primary"
             disabled={!repo}
@@ -475,7 +552,29 @@ export function App({
           </p>
         ) : null}
         {!repo ? <p class="list-view">Opening the graveyard...</p> : null}
-        {repo && seanceDue && !inviteHidden && items.length > 0 ? (
+        {repo && !intro && demoCount > 0 ? (
+          <div class="invite demo-note" data-testid="demo-note">
+            <p>
+              {demoCount === 1 ? 'One demo deadline is' : `${demoCount} demo deadlines are`} in the graveyard, labelled Demo. Clear them when you are ready to
+              add your own.
+            </p>
+            <div class="invite-actions">
+              <button
+                type="button"
+                class="btn btn-small"
+                onClick={() =>
+                  void clearDemoItems().then(() => {
+                    // This note disappears with the demo items, so focus moves to the next useful control.
+                    addRef.current?.focus();
+                  })
+                }
+              >
+                Clear demo
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {repo && seanceDue && !inviteHidden && !intro && items.length > 0 ? (
           <div class="invite" data-testid="seance-invite">
             <p>
               {seances.length === 0
@@ -493,10 +592,16 @@ export function App({
             </div>
           </div>
         ) : null}
-        {repo && view === 'scene' ? (
+        {repo && (view === 'scene' || intro !== null) ? (
           <div class="scene-wrap">
             <p class="scene-hint">Scroll sideways to see the whole graveyard, or use the list below.</p>
-            <Scene layout={layout} entries={entriesById} mode={mode} onOpen={(id, el) => openDialog({ kind: 'detail', id }, el, id)} />
+            <Scene
+              layout={layout}
+              entries={entriesById}
+              mode={mode}
+              onOpen={(id, el) => openDialog({ kind: 'detail', id }, el, id)}
+              spotlight={intro ? stepFocus(intro) : undefined}
+            />
           </div>
         ) : null}
         {repo ? <ListView vm={vm} onOpen={(id, el) => openDialog({ kind: 'detail', id }, el, id)} onAction={onListAction} /> : null}
@@ -549,6 +654,10 @@ export function App({
           onToggleReminders={toggleReminders}
           llm={llmSettings}
           onSaveLlm={saveLlm}
+          demoCount={demoCount}
+          itemCount={items.length}
+          onClearDemo={clearDemoItems}
+          onReplayIntro={replayIntro}
           onClose={() => setDialog(null)}
         />
       ) : null}
@@ -566,6 +675,19 @@ export function App({
           onFinish={finishSeance}
           onApply={applySeanceStep}
           onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {intro ? (
+        <Intro
+          step={intro}
+          mode={mode}
+          ghostStatus={entriesById.get(DEMO_IDS.a)?.status ?? null}
+          demoCount={demoCount}
+          onNext={() => setIntro((s) => (s === null ? null : (nextStep(s) ?? s)))}
+          onSkip={() => endIntro(false)}
+          onRevive={() => runAction(DEMO_IDS.a, 'revive')}
+          onSubmit={() => runAction(DEMO_IDS.a, 'submit')}
+          onFinish={endIntro}
         />
       ) : null}
     </>

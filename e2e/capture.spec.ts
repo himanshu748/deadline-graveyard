@@ -1,14 +1,14 @@
 // Validates: capture-and-export R1.7, R1.8, R1.9, R2.1 in a real browser with every non-local
 // request blocked. `vite preview` serves no /api, so "Fill in from the link" must fail politely
-// and the paste-text and manual paths must still work.
+// and the paste-text and manual paths must still work. Starts from an empty graveyard (helpers.ts).
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { startEmpty } from './helpers.ts';
 
 test.beforeEach(async ({ page, baseURL }) => {
   const origin = new URL(baseURL ?? 'http://127.0.0.1').origin;
   await page.route('**/*', (route) => (route.request().url().startsWith(origin) ? route.continue() : route.abort()));
-  await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Add deadline' })).toBeEnabled();
+  await startEmpty(page);
 });
 
 test('add from URL falls back to pasted text, then saves after the user confirms', async ({ page }) => {

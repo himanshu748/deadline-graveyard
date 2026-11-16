@@ -7,6 +7,7 @@ import { DAY, HOUR, makeItem } from '../domain/test-items.ts';
 import type { LlmProvider } from '../llm/provider.ts';
 import { memoryRepository, type Repository } from '../storage/repository.ts';
 import { App } from '../ui/App.tsx';
+import { SETTING_INTRO_SEEN } from '../ui/intro/demo-seed.ts';
 import { deriveViewModel } from '../ui/view-model.ts';
 import { addRecord, parseHistory, SETTING_SEANCE_HISTORY } from './history.ts';
 import { buildPlan, emptyAnswers, type SeanceRecord } from './plan.ts';
@@ -28,6 +29,8 @@ async function flush() {
 const reducedMotion = () => ({ matches: true, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList;
 
 async function mount(repo: Repository) {
+  // A returning visitor: without the flag an empty graveyard would start the first-visit intro.
+  await repo.putSetting(SETTING_INTRO_SEEN, true);
   const root = document.createElement('div');
   document.body.append(root);
   let n = 0;

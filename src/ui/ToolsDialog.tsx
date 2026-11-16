@@ -1,6 +1,7 @@
 // "Export and settings" dialog: .ics export, JSON backup and restore, reminders and the optional
-// AI helper (capture-and-export R2, R3, R4, R5). Every action is a button the user presses.
-import { useState } from 'preact/hooks';
+// AI helper (capture-and-export R2, R3, R4, R5), plus Clear demo and Replay the intro
+// (first-visit R1.6, R2.5, R2.6). Every action is a button the user presses.
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { BackupError } from '../storage/backup.ts';
 import type { ProviderId } from '../llm/provider.ts';
 import { DEFAULT_MODELS, DEFAULT_OLLAMA_URL, type ProviderSettings } from '../llm/providers.ts';
@@ -28,6 +29,12 @@ export interface ToolsDialogProps {
   onToggleReminders: () => Promise<void>;
   llm: ProviderSettings;
   onSaveLlm: (settings: ProviderSettings) => boolean;
+  /** first-visit R2.5, R1.6, R2.6: demo items left, all items, and the two demo actions. */
+  demoCount: number;
+  itemCount: number;
+  /** Deletes every demo item and nothing else. Resolves to how many were deleted. */
+  onClearDemo: () => Promise<number>;
+  onReplayIntro: () => void;
   onClose: () => void;
 }
 
@@ -35,11 +42,33 @@ const MAX_BACKUP_BYTES = 20_000_000;
 
 export function ToolsDialog(props: ToolsDialogProps) {
   const { unresolvedCount, onExportIcs, onDownloadBackup, onRestore, remindersOn, permission, onToggleReminders, llm, onSaveLlm, onClose } = props;
+  const { demoCount, itemCount, onClearDemo, onReplayIntro } = props;
   const [backupMessage, setBackupMessage] = useState('');
   const [pending, setPending] = useState<{ name: string; text: string } | null>(null);
   const [draft, setDraft] = useState<ProviderSettings>(llm);
   const [llmMessage, setLlmMessage] = useState('');
+  const [demoMessage, setDemoMessage] = useState('');
+  const [confirmReplay, setConfirmReplay] = useState(false);
+  const replayRef = useRef<HTMLButtonElement>(null);
+  const replayYesRef = useRef<HTMLButtonElement>(null);
   const titleId = 'tools-title';
+
+  useEffect(() => {
+    if (confirmReplay) replayYesRef.current?.focus();
+  }, [confirmReplay]);
+
+  // The Clear demo button turns disabled once nothing is left, so focus moves to its neighbour.
+  const clearDemo = async () => {
+    const n = await onClearDemo();
+    setDemoMessage(`Cleared ${n} demo deadline${n === 1 ? '' : 's'}. Your own deadlines were not touched.`);
+    replayRef.current?.focus();
+  };
+
+  // R2.6: with stored items, the replay seeds demo items again only after this confirmation.
+  const replay = () => {
+    if (itemCount === 0) onReplayIntro();
+    else setConfirmReplay(true);
+  };
 
   const pickFile = async (e: Event) => {
     const input = e.currentTarget as HTMLInputElement;
@@ -216,6 +245,50 @@ export function ToolsDialog(props: ToolsDialogProps) {
             {llmMessage}
           </p>
         </form>
+      </section>
+
+      <section class="tools-section" aria-labelledby="tools-demo">
+        <h3 id="tools-demo">Demo and first visit</h3>
+        <p class="hint">
+          {demoCount === 0 ? 'No demo deadlines are in the graveyard.' : `${demoCount} demo deadline${demoCount === 1 ? ' is' : 's are'} in the graveyard, each labelled Demo.`} Clear demo deletes only those, never your own deadlines.
+        </p>
+        <div class="panel-actions">
+          <button type="button" class="btn" onClick={() => void clearDemo()} disabled={demoCount === 0}>
+            Clear demo
+          </button>
+          <button ref={replayRef} type="button" class="btn" onClick={replay} aria-expanded={itemCount > 0 ? confirmReplay : undefined}>
+            Replay the intro
+          </button>
+        </div>
+        {confirmReplay ? (
+          <div class="confirm" role="group" aria-labelledby="replay-q">
+            <p id="replay-q">
+              Replay the intro?{' '}
+              {itemCount > demoCount
+                ? `It adds 3 demo deadlines, labelled Demo, next to yours${demoCount > 0 ? ' and replaces the demo deadlines already here' : ''}.`
+                : 'It replaces the demo deadlines already here with 3 fresh ones, labelled Demo.'}{' '}
+              You can clear them at the end.
+            </p>
+            <div class="panel-actions">
+              <button ref={replayYesRef} type="button" class="btn btn-primary" onClick={onReplayIntro}>
+                Replay with demo deadlines
+              </button>
+              <button
+                type="button"
+                class="btn"
+                onClick={() => {
+                  setConfirmReplay(false);
+                  replayRef.current?.focus();
+                }}
+              >
+                Not now
+              </button>
+            </div>
+          </div>
+        ) : null}
+        <p role="status" class="hint">
+          {demoMessage}
+        </p>
       </section>
 
       <div class="panel-actions">

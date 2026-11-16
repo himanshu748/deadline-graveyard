@@ -14,6 +14,10 @@ Every element in the scene encodes real state:
 
 Times are shown in your timezone. Data stays in your browser (IndexedDB), so it works offline and without an account.
 
+### First visit and demo data
+
+On the first visit to an empty graveyard the app adds 3 demo deadlines and plays a tour of at most 5 captioned steps, about 50 seconds if you just watch. All 3 are labelled Demo in the scene, the list view, the detail panel and the `.ics` export, and their titles start with "Demo:". One is a ghost the tour invites you to revive and then submit (a lantern), one is due within a few hours, and one is a missed tombstone with a demo epitaph. **Skip intro** or Escape ends it at any time; with reduced motion every step waits for **Next**. At the end you choose **Keep the demo** or **Clear demo**. **Export and settings > Demo and first visit** has **Clear demo** (deletes only items marked Demo) and **Replay the intro** (asks first if you already have deadlines).
+
 ## Who it is for
 
 Students and builders who track many overlapping deadlines (hackathons, coursework, internship and grant applications) and lose track of which ones are close and which projects they quietly dropped.
@@ -172,7 +176,7 @@ No library was added for add-from-URL, `.ics`, notifications or the AI helper: H
 
 ## Project status
 
-Spec phase done: steering, feature specs, hooks, custom agents and MCP config are in `.kiro/`. The deadline engine (`src/domain/`, pure state machine, timezones and DST, with fast-check property tests) and offline storage (`src/storage/`, IndexedDB with JSON backup and restore) are implemented and tested. The graveyard scene (SVG, GSAP motion with reduced-motion support, optional synthesised sound) and the screen-reader list view with keyboard navigation, add and edit form and detail dialog are implemented and persist to IndexedDB. Add from a link (with paste-text and manual fallbacks), `.ics` export, backup and restore, opt-in reminders and the optional AI helper (default None) are implemented and tested. The Séance weekly review (three skippable questions, a rule-based plan for the next 7 days, revive, bury and epitaph actions that each wait for a confirmation, and a history kept in backups) is implemented and tested, including a keyboard-only Playwright run. Demo data and the first-visit intro are not built yet. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
+Spec phase done: steering, feature specs, hooks, custom agents and MCP config are in `.kiro/`. The deadline engine (`src/domain/`, pure state machine, timezones and DST, with fast-check property tests) and offline storage (`src/storage/`, IndexedDB with JSON backup and restore) are implemented and tested. The graveyard scene (SVG, GSAP motion with reduced-motion support, optional synthesised sound) and the screen-reader list view with keyboard navigation, add and edit form and detail dialog are implemented and persist to IndexedDB. Add from a link (with paste-text and manual fallbacks), `.ics` export, backup and restore, opt-in reminders and the optional AI helper (default None) are implemented and tested. The Séance weekly review (three skippable questions, a rule-based plan for the next 7 days, revive, bury and epitaph actions that each wait for a confirmation, and a history kept in backups) is implemented and tested, including a keyboard-only Playwright run. The first-visit intro with 3 labelled demo deadlines (skip, Escape, reduced-motion steps, revive and lantern invitations, keep or clear, replay) is implemented and tested, including a real-time Playwright run of the passive tour. Still to do: the polish phase (Lighthouse and axe audit script, design review, 50-item performance pass) and the submission docs. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
 
 Not verified yet, and needing a person or a deploy:
 

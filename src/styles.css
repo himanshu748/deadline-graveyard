@@ -805,3 +805,75 @@ dialog.panel .hint {
   margin: 0;
   font-weight: 700;
 }
+
+/* First visit (first-visit spec): a modal panel at the bottom; the scene stays visible above it. */
+
+.demo-note {
+  border-color: var(--ghost-200);
+}
+
+dialog.panel.intro {
+  width: min(40rem, calc(100vw - 2rem));
+  max-height: min(46vh, 26rem);
+  overflow-y: auto;
+  margin: auto auto var(--space-4);
+  inset: auto 0 0;
+  border-color: var(--lantern-300);
+  box-shadow: 0 -0.5rem 2rem rgb(11 16 32 / 70%);
+}
+
+/* The spotlight inside the scene does the dimming, so the page behind stays readable. */
+dialog.panel.intro::backdrop {
+  background: transparent;
+}
+
+.intro-kicker {
+  margin: 0 0 var(--space-1);
+  color: var(--mist-300);
+  font-size: var(--step--1);
+  font-weight: 700;
+}
+
+.intro-copy p {
+  margin: 0 0 var(--space-2);
+  font-size: var(--step-1);
+}
+
+.intro-copy .success,
+.intro-copy .error {
+  font-size: var(--step-0);
+}
+
+dialog.panel.intro h2 {
+  font-size: var(--step-3);
+  margin-bottom: var(--space-2);
+}
+
+/* The first step's title uses the top of the type scale (graveyard-design.md, step 5). */
+.intro-body[data-step='moonrise'] h2 {
+  font-size: var(--step-5);
+}
+
+.intro-progress {
+  height: 4px;
+  margin-bottom: var(--space-3);
+  background: var(--night-700);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.intro-progress span {
+  display: block;
+  height: 100%;
+  background: var(--candle-400);
+  transform: scaleX(0);
+  transform-origin: 0% 50%;
+}
+
+.intro-controls {
+  justify-content: flex-end;
+}
+
+.intro-invite {
+  margin-top: var(--space-2);
+}

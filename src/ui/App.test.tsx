@@ -7,6 +7,7 @@ import { DAY, DUE, HOUR, makeItem } from '../domain/test-items.ts';
 import type { Sound } from '../scene/sound.ts';
 import { memoryRepository, type Repository } from '../storage/repository.ts';
 import { App, SETTING_MOTION, SETTING_VIEW } from './App.tsx';
+import { SETTING_INTRO_SEEN } from './intro/demo-seed.ts';
 
 const NOW = DUE - 3 * DAY;
 
@@ -40,6 +41,9 @@ function fakeSound(): Sound & { enableCalls: number } {
 const reducedMotion = () => ({ matches: true, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList;
 
 async function mount(repo: Repository = memoryRepository()) {
+  // These tests cover a returning visitor, so the "intro seen" flag is set. The first-visit intro
+  // and its demo items are tested in intro/Intro.test.tsx.
+  await repo.putSetting(SETTING_INTRO_SEEN, true);
   const root = document.createElement('div');
   document.body.append(root);
   const sounds: Array<ReturnType<typeof fakeSound>> = [];

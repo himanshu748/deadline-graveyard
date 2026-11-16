@@ -27,7 +27,11 @@ export function Ghost({ node }: { node: SceneNode }) {
           <ellipse cx="0" cy="66" rx="7" ry="5" fill={PALETTE['night-900']} />
         </g>
       </g>
-      <LabelPlate y={140} width={124} text={truncate(node.title, 11)} small />
     </g>
   );
+}
+
+/** The ghost's visible text. Scene.tsx draws it outside the button element (WCAG 2.5.3). */
+export function GhostText({ node }: { node: SceneNode }) {
+  return <LabelPlate y={140} width={124} text={truncate(node.title, 11)} small />;
 }

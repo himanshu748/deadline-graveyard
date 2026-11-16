@@ -35,7 +35,11 @@ export function Candle({ node }: { node: SceneNode }) {
         <path data-flame={urgent ? 'fast' : 'slow'} d="M0 0 C 11 -9, 9 -22, 0 -36 C -9 -22, -11 -9, 0 0 Z" fill={flameColour} />
         <path d="M0 -2 C 5 -7, 4 -14, 0 -21 C -4 -14, -5 -7, 0 -2 Z" fill={PALETTE['lantern-300']} />
       </g>
-      <LabelPlate y={198} width={114} text={truncate(node.title, 10)} />
     </g>
   );
+}
+
+/** The candle's visible text. Scene.tsx draws it outside the button element (WCAG 2.5.3). */
+export function CandleText({ node }: { node: SceneNode }) {
+  return <LabelPlate y={198} width={114} text={truncate(node.title, 10)} />;
 }

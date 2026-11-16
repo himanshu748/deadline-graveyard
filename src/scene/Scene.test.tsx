@@ -53,7 +53,19 @@ describe('Scene rendering', () => {
     const { root } = mount();
     const kinds = Object.fromEntries(sceneItems(root).map((g) => [g.getAttribute('data-status'), g.getAttribute('data-kind')]));
     expect(kinds).toEqual({ active: 'candle', 'due-soon': 'candle', missed: 'tombstone', submitted: 'lantern', ghost: 'ghost' });
-    expect(root.querySelector('[data-status="missed"]')?.textContent).toMatch(/No epitaph\s*yet/);
+    expect(root.querySelector('.scene-item[data-status="missed"]')?.closest('.scene-slot')?.textContent).toMatch(/No epitaph\s*yet/);
+  });
+
+  it('keeps visible text out of the buttons, in an aria-hidden layer that clicks pass through (WCAG 2.5.3)', () => {
+    const { root } = mount();
+    for (const item of sceneItems(root)) {
+      // axe label-content-name-mismatch: a button without visible text cannot contradict its name.
+      expect(item.textContent).toBe('');
+      const text = item.closest('.scene-slot')?.querySelector('.scene-item-text');
+      expect(text?.getAttribute('aria-hidden')).toBe('true');
+      expect(text?.getAttribute('pointer-events')).toBe('none');
+      expect(text?.textContent?.length).toBeGreaterThan(0);
+    }
   });
 
   it('draws wax height from the remaining fraction and a fast flame when due soon', () => {
@@ -67,8 +79,27 @@ describe('Scene rendering', () => {
 
   it('shows a Demo badge on demo items only (R2.7)', () => {
     const { root } = mount();
-    expect(root.querySelector(`[data-id="${id(2)}"]`)?.textContent).toContain('Demo');
-    expect(root.querySelector(`[data-id="${id(1)}"]`)?.textContent).not.toContain('Demo');
+    expect(root.querySelector(`[data-slot="${id(2)}"] .scene-item-text`)?.textContent).toContain('Demo');
+    expect(root.querySelector(`[data-slot="${id(1)}"] .scene-item-text`)?.textContent).not.toContain('Demo');
+  });
+
+  it('draws the intro spotlight and pointer ring only while the intro runs (first-visit task 3)', () => {
+    const { root } = mount();
+    expect(root.querySelector('[data-testid="intro-spotlight"]')).toBeNull();
+    const vm = deriveViewModel(items, now, 'UTC', 'en');
+    act(() => {
+      render(
+        <Scene layout={layoutScene(items, now)} entries={new Map(vm.entries.map((e) => [e.id, e]))} mode="reduced" onOpen={vi.fn()} spotlight={{ id: id(5), wide: false }} />,
+        root,
+      );
+    });
+    const overlay = root.querySelector('[data-testid="intro-spotlight"]');
+    expect(overlay?.getAttribute('aria-hidden')).toBe('true');
+    const ghost = layoutScene(items, now).nodes.find((n) => n.id === id(5));
+    expect(Number(root.querySelector('#intro-spot')?.getAttribute('cx'))).toBe(ghost?.x);
+    expect(Number(root.querySelector('.intro-ring')?.getAttribute('y'))).toBeLessThan(ghost?.y ?? 0);
+    // Reduced mode writes the geometry directly; nothing is tweened.
+    expect(gsap.globalTimeline.getChildren(true, true, true)).toHaveLength(0);
   });
 
   it('starts no GSAP tween in reduced mode (R3.4)', () => {

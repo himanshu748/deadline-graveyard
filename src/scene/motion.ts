@@ -157,6 +157,123 @@ export function animateStatusChange(mode: MotionMode, el: SVGElement): void {
   );
 }
 
+// First visit (first-visit design.md, tasks 2 and 3). The intro's timer, camera and pointer go
+// through this file too, so the same `full` or `reduced` setting decides whether anything moves.
+// GSAP APIs used, confirmed on gsap.com/docs v3: gsap.timeline() with onComplete, pause() and
+// resume(); the core AttrPlugin (`attr: { cx, cy, r }`, numeric attributes of SVG elements);
+// gsap.to() on a plain object with onUpdate; tween.kill().
+
+/** Auto-advance for one intro step. Pausing keeps the progress, so Resume continues the step. */
+export interface StepClock {
+  pause(): void;
+  resume(): void;
+  stop(): void;
+}
+
+/**
+ * first-visit R1.2: calls `onDone` after `seconds` and fills `bar` (scaleX 0 to 1) on the way.
+ * R1.4: returns null in `reduced` mode, where a step only moves on when the user asks.
+ * It runs on GSAP's ticker, so pauseWhenHidden() also pauses it while the tab is hidden.
+ */
+export function startStepClock(mode: MotionMode, seconds: number, onDone: () => void, bar: HTMLElement | null): StepClock | null {
+  if (mode === 'reduced') return null;
+  const tl = gsap.timeline({ onComplete: onDone });
+  if (bar) tl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: seconds, ease: 'none', transformOrigin: '0% 50%' });
+  else tl.to({}, { duration: seconds });
+  return {
+    pause: () => void tl.pause(),
+    resume: () => void tl.resume(),
+    stop: () => void tl.kill(),
+  };
+}
+
+/** A scene slot (viewBox units) for the intro's spotlight and pointer ring. */
+export interface SpotTarget {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** A wide view: the spotlight opens over the whole scene. */
+  wide: boolean;
+  /** False when the step's item is gone: the caption stays, the ring hides (design.md errors). */
+  ring: boolean;
+}
+
+/** Spotlight centre and radius, and the ring rectangle around the slot, all in viewBox units. */
+export function spotGeometry(to: SpotTarget, viewWidth: number, viewHeight: number) {
+  const pad = 10;
+  return {
+    spot: { cx: to.x, cy: to.y + to.h / 2, r: to.wide ? Math.max(viewWidth, viewHeight) : Math.max(to.w, to.h) * 1.15 },
+    ring: { x: to.x - to.w / 2 - pad, y: to.y - pad, width: to.w + 2 * pad, height: to.h + 2 * pad, opacity: to.ring ? 1 : 0 },
+  };
+}
+
+const numericAttrs = (el: Element, values: Record<string, number>) => {
+  for (const [k, v] of Object.entries(values)) el.setAttribute(k, String(Math.round(v * 10) / 10));
+};
+
+/**
+ * Moves the spotlight (a radial gradient in user space) and the pointer ring to a slot.
+ * `full` glides there in 0.8 s with power2.out; `reduced` or `instant` jumps there.
+ * Returns a function that stops the glide where it is.
+ */
+export function aimSpotlight(
+  mode: MotionMode,
+  els: { gradient: SVGElement; ring: SVGElement },
+  to: SpotTarget,
+  view: { width: number; height: number },
+  instant = false,
+): () => void {
+  const g = spotGeometry(to, view.width, view.height);
+  const { opacity, ...ring } = g.ring;
+  if (mode === 'reduced' || instant) {
+    numericAttrs(els.gradient, g.spot);
+    numericAttrs(els.ring, ring);
+    els.ring.style.opacity = String(opacity);
+    return () => {};
+  }
+  // Geometry goes through `attr`; opacity is CSS, so it stays outside `attr` (AttrPlugin docs).
+  const tweens = [
+    gsap.to(els.gradient, { attr: g.spot, duration: 0.8, ease: 'power2.out', overwrite: 'auto' }),
+    gsap.to(els.ring, { attr: ring, opacity, duration: 0.8, ease: 'power2.out', overwrite: 'auto' }),
+  ];
+  return () => tweens.forEach((t) => t.kill());
+}
+
+/** Where the camera stops: the item's centre at 36% of the viewport height, above the intro panel. */
+export const CAMERA_EYE_LINE = 0.36;
+
+/**
+ * The intro camera: scrolls the page (and the scene's own sideways scroller on narrow screens)
+ * so `el` sits above the intro panel. `full` glides over 0.9 s; `reduced` jumps.
+ */
+export function panCameraTo(mode: MotionMode, el: Element, scroller: HTMLElement | null, win: Window = window): () => void {
+  const rect = el.getBoundingClientRect();
+  const top = Math.max(0, Math.round(win.scrollY + rect.top + rect.height / 2 - win.innerHeight * CAMERA_EYE_LINE));
+  let left = 0;
+  if (scroller) {
+    const box = scroller.getBoundingClientRect();
+    left = Math.max(0, Math.round(scroller.scrollLeft + rect.left + rect.width / 2 - box.left - box.width / 2));
+  }
+  if (mode === 'reduced') {
+    win.scrollTo(win.scrollX, top);
+    if (scroller) scroller.scrollLeft = left;
+    return () => {};
+  }
+  const cam = { top: win.scrollY, left: scroller?.scrollLeft ?? 0 };
+  const tween = gsap.to(cam, {
+    top,
+    left,
+    duration: 0.9,
+    ease: 'power2.out',
+    onUpdate: () => {
+      win.scrollTo(win.scrollX, cam.top);
+      if (scroller) scroller.scrollLeft = cam.left;
+    },
+  });
+  return () => tween.kill();
+}
+
 /** R5.4: pause every GSAP animation while the tab is hidden. Returns an unsubscribe function. */
 export function pauseWhenHidden(doc: Document): () => void {
   const onChange = () => {

@@ -10,9 +10,11 @@ export interface ModalProps {
   titleId: string;
   onClose: () => void;
   children: ComponentChildren;
+  /** Extra class next to `panel`, for example `intro` for the first-visit panel. */
+  className?: string;
 }
 
-export function Modal({ titleId, onClose, children }: ModalProps) {
+export function Modal({ titleId, onClose, children, className }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const native = useRef(true);
 
@@ -54,7 +56,7 @@ export function Modal({ titleId, onClose, children }: ModalProps) {
   return (
     <dialog
       ref={ref}
-      class="panel"
+      class={className ? `panel ${className}` : 'panel'}
       aria-labelledby={titleId}
       onKeyDown={onKeyDown}
       onCancel={(e) => {

@@ -5,14 +5,20 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import type { ViewEntry } from '../ui/view-model.ts';
 import { nextFocusIndex } from '../ui/view-model.ts';
 import { BackLayers, FenceLayer, FogLayer, GrassLayer, GroundLayer, SceneDefs } from './Backdrop.tsx';
-import { Candle } from './Candle.tsx';
-import { Ghost } from './Ghost.tsx';
-import { Lantern } from './Lantern.tsx';
+import { Candle, CandleText } from './Candle.tsx';
+import { Ghost, GhostText } from './Ghost.tsx';
+import { Lantern, LanternText } from './Lantern.tsx';
 import type { SceneKind, SceneLayout, SceneNode } from './layout.ts';
-import { animateStatusChange, startAmbient, type MotionMode } from './motion.ts';
+import { aimSpotlight, animateStatusChange, panCameraTo, startAmbient, type MotionMode, type SpotTarget } from './motion.ts';
 import { DemoBadge, FocusRing } from './parts.tsx';
-import { Tombstone } from './Tombstone.tsx';
+import { Tombstone, TombstoneText } from './Tombstone.tsx';
 import { PALETTE } from '../ui/tokens.ts';
+
+/** first-visit: the slot the intro points at. `wide` opens the spotlight over the whole scene. */
+export interface SceneSpotlight {
+  id: string;
+  wide: boolean;
+}
 
 export interface SceneProps {
   layout: SceneLayout;
@@ -20,6 +26,11 @@ export interface SceneProps {
   mode: MotionMode;
   /** Opens the detail panel. `opener` gets focus back when the panel closes. */
   onOpen: (id: string, opener: HTMLElement | SVGElement) => void;
+  /**
+   * first-visit tasks 2 and 3: while the intro runs, a spotlight and a pointer ring follow this
+   * slot and the camera pans to it. `null` lights the whole scene; `undefined` means no intro.
+   */
+  spotlight?: SceneSpotlight | null | undefined;
 }
 
 function Body({ node }: { node: SceneNode }) {
@@ -29,9 +40,22 @@ function Body({ node }: { node: SceneNode }) {
     case 'tombstone':
       return <Tombstone node={node} />;
     case 'lantern':
-      return <Lantern node={node} />;
+      return <Lantern />;
     case 'ghost':
       return <Ghost node={node} />;
+  }
+}
+
+function BodyText({ node }: { node: SceneNode }) {
+  switch (node.kind) {
+    case 'candle':
+      return <CandleText node={node} />;
+    case 'tombstone':
+      return <TombstoneText node={node} />;
+    case 'lantern':
+      return <LanternText node={node} />;
+    case 'ghost':
+      return <GhostText node={node} />;
   }
 }
 
@@ -48,6 +72,7 @@ interface ItemProps {
 function SceneItem({ node, name, focusable, mode, register, onKeyDown, onActivate }: ItemProps) {
   const ref = useRef<SVGGElement>(null);
   const animRef = useRef<SVGGElement>(null);
+  const textRef = useRef<SVGGElement>(null);
   const prevKind = useRef<SceneKind | null>(null);
 
   useLayoutEffect(() => {
@@ -62,42 +87,86 @@ function SceneItem({ node, name, focusable, mode, register, onKeyDown, onActivat
     if (before !== null && before !== node.kind && animRef.current) {
       try {
         animateStatusChange(mode, animRef.current);
+        if (textRef.current) animateStatusChange(mode, textRef.current);
       } catch {
         // Static fallback: the new state is already drawn.
       }
     }
   }, [node.kind, mode]);
 
+  // The button holds shapes only. Its visible text (title plate, epitaph, Demo badge) is drawn in an
+  // aria-hidden sibling on top, so the button's name always contains every word of its visible
+  // label (WCAG 2.5.3, axe label-content-name-mismatch); clicks pass through the text to the button.
   return (
-    <g
-      ref={ref}
-      class="scene-item"
-      role="button"
-      tabindex={focusable ? 0 : -1}
-      aria-label={name}
-      data-id={node.id}
-      data-kind={node.kind}
-      data-status={node.status}
-      transform={`translate(${node.x} ${node.y})`}
-      onKeyDown={(e) => onKeyDown(e, node.id)}
-      onClick={(e) => onActivate(node.id, e.currentTarget)}
-    >
-      <rect x={-node.w / 2} y="0" width={node.w} height={node.h} fill="transparent" />
-      <FocusRing w={node.w} h={node.h} />
-      <g ref={animRef}>
-        <Body node={node} />
+    <g class="scene-slot" data-slot={node.id} transform={`translate(${node.x} ${node.y})`}>
+      <g
+        ref={ref}
+        class="scene-item"
+        role="button"
+        tabindex={focusable ? 0 : -1}
+        aria-label={name}
+        data-id={node.id}
+        data-kind={node.kind}
+        data-status={node.status}
+        onKeyDown={(e) => onKeyDown(e, node.id)}
+        onClick={(e) => onActivate(node.id, e.currentTarget)}
+      >
+        <rect x={-node.w / 2} y="0" width={node.w} height={node.h} fill="transparent" />
+        <FocusRing w={node.w} h={node.h} />
+        <g ref={animRef}>
+          <Body node={node} />
+        </g>
       </g>
-      {node.demo ? <DemoBadge x={-node.w / 2 + 6} y={6} /> : null}
+      <g ref={textRef} class="scene-item-text" aria-hidden="true" pointer-events="none">
+        <BodyText node={node} />
+        {node.demo ? <DemoBadge x={-node.w / 2 + 6} y={6} /> : null}
+      </g>
     </g>
   );
 }
 
-export function Scene({ layout, entries, mode, onOpen }: SceneProps) {
+export function Scene({ layout, entries, mode, onOpen, spotlight }: SceneProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const items = useRef(new Map<string, SVGGElement>());
+  const gradientRef = useRef<SVGRadialGradientElement>(null);
+  const ringRef = useRef<SVGRectElement>(null);
+  const aimed = useRef(false);
   const order = layout.nodes.map((n) => n.id);
   const [activeId, setActiveId] = useState<string | null>(null);
   const current = activeId !== null && order.includes(activeId) ? activeId : (order[0] ?? null);
+
+  const intro = spotlight !== undefined;
+  const target = spotlight ? layout.nodes.find((n) => n.id === spotlight.id) : undefined;
+  const spot: SpotTarget = target
+    ? { x: target.x, y: target.y, w: target.w, h: target.h, wide: spotlight?.wide ?? false, ring: true }
+    : { x: layout.width / 2, y: 0, w: 0, h: layout.height, wide: true, ring: false };
+  const spotKey = intro ? `${target?.id ?? ''}:${spot.x}:${spot.y}:${spot.w}:${spot.h}:${spot.wide}:${layout.width}:${layout.height}` : '';
+
+  // first-visit task 3: aim the spotlight and pan the camera when the target or its slot changes
+  // (a revived ghost moves down to the candles). The first aim of an intro jumps, later ones glide.
+  useLayoutEffect(() => {
+    if (!intro) {
+      aimed.current = false;
+      return;
+    }
+    const gradient = gradientRef.current;
+    const ring = ringRef.current;
+    if (!gradient || !ring) return;
+    let stopAim = () => {};
+    let stopPan = () => {};
+    try {
+      stopAim = aimSpotlight(mode, { gradient, ring }, spot, layout, !aimed.current);
+      aimed.current = true;
+      const el = target ? items.current.get(target.id) : undefined;
+      if (el) stopPan = panCameraTo(mode, el, svgRef.current?.parentElement ?? null);
+    } catch {
+      // GSAP or scrolling failed: the captions still explain every step.
+    }
+    return () => {
+      stopAim();
+      stopPan();
+    };
+  }, [spotKey, mode]);
 
   const register = useMemo(
     () => (id: string, el: SVGGElement | null) => {
@@ -187,6 +256,21 @@ export function Scene({ layout, entries, mode, onOpen }: SceneProps) {
         </g>
       ) : null}
       <GrassLayer width={layout.width} height={layout.height} />
+      {intro ? (
+        <g class="intro-overlay" aria-hidden="true" data-testid="intro-spotlight" pointer-events="none">
+          <defs>
+            {/* Clear in the middle, then night-900 at 72% beyond the radius (spread pad). */}
+            <radialGradient id="intro-spot" ref={gradientRef} gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color={PALETTE['night-900']} stop-opacity="0" />
+              <stop offset="0.6" stop-color={PALETTE['night-900']} stop-opacity="0" />
+              <stop offset="1" stop-color={PALETTE['night-900']} stop-opacity="0.72" />
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width={layout.width} height={layout.height} fill="url(#intro-spot)" />
+          {/* Geometry is written by aimSpotlight only, so Preact never fights GSAP over it. */}
+          <rect ref={ringRef} class="intro-ring" rx="16" fill="none" stroke={PALETTE['lantern-300']} stroke-width="4" stroke-dasharray="14 10" />
+        </g>
+      ) : null}
     </svg>
   );
 }
