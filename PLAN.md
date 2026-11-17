@@ -2,7 +2,7 @@
 
 Kiroween 2026 entry. **Category:** Costume Contest. **Bonus targets:** Best Student Project (Costume Contest), Best Demo, Bonus Blog, Social Blitz.
 
-**Status:** awaiting your approval. Nothing below the "Phase 0" line has been started.
+**Status (17 November 2026):** plan approved on 15 November. Local implementation and automated validation are complete; submission drafts and measured review are prepared. Kiro-specific execution checks and author release steps remain open in SUBMISSION_CHECKLIST.md. Nothing is published or deployed.
 
 **Hard deadline:** Fri 4 Dec 2026, 2:00 PM PT (Sat 5 Dec 2026, 03:30 IST). The rules say no extensions and no late submissions.
 
@@ -253,13 +253,13 @@ F15 (sync) is attempted only if phases 2 to 4 finish early.
 - Every API confirmed in official docs before use.
 - Any login (GitHub, AWS, Vercel) stops work and I hand you the exact command.
 
-## 10. Open questions for you
+## 10. Decisions and author details
 
-1. **Repo location:** OK with the dedicated `deadline-graveyard/` repo (section 3)? If yes, please add that folder as its own T3 Code project so Kiro sessions start there, or tell me if you prefer it somewhere else.
-2. **License:** MIT, or Apache-2.0?
-3. **UI layer:** Preact (proposed) or Svelte?
+1. **Repo location:** approved: dedicated `deadline-graveyard/` repo. Start Kiro sessions in this folder.
+2. **License:** MIT, approved with the defaults.
+3. **UI layer:** Preact, approved with the defaults.
 4. ~~**Hosting when you say go:**~~ **Resolved:** Vercel free tier, with the URL-fetch Vercel function. Deploy still waits for your go, and it must stay up until 29 Jan 2027.
-5. **Sync:** keep it as a stretch goal, or drop it and ship "none plus JSON export"?
+5. **Sync:** stretch only; no AWS resources or costs authorized. Current product is browser-local with JSON backup.
 6. **Student details:** you will need your LinkedIn, student email, year, degree and school for Best Student. Do you have all of these, and is everyone on the team a student?
 7. ~~**Kiro credits:**~~ **Resolved:** you have already received your credits.
 8. ~~**Kiroween 2025:**~~ **Resolved:** you did not register for Kiroween 2025, so Best Ghost of Kiroween Past is not targeted.

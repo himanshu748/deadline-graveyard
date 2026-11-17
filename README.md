@@ -2,6 +2,8 @@
 
 A deadline and project tracker where a moonlit graveyard is the interface. Built for the Kiroween 2026 hackathon (Costume Contest category).
 
+![Local Deadline Graveyard with labelled demo records, static reduced-motion scene and the matching text list](docs/design-reviews/2026-11-17/desktop-reduced.png)
+
 ## What it is
 
 Every element in the scene encodes real state:
@@ -31,7 +33,7 @@ TODO after Vercel deploy. The app will be hosted on the Vercel free tier only af
 Requirements: Node.js 22.12 or newer and npm.
 
 ```sh
-npm install
+npm ci
 npm run dev        # dev server at http://localhost:5173
 npm run build      # typecheck, then production build into dist/
 npm run preview    # serve dist/ at http://localhost:4173
@@ -44,7 +46,8 @@ npm run typecheck  # TypeScript, no emit
 npm run lint       # ESLint
 npm test           # Vitest unit and fast-check property-based tests
 npx playwright install chromium   # once, before the first e2e run
-npm run test:e2e   # Playwright end-to-end tests with axe accessibility checks
+npm run test:e2e -- --workers=2  # production-build browser tests with axe
+npm run build && npm run audit:a11y  # writes reports/summary.md
 ```
 
 ## Getting deadlines in and out
@@ -140,6 +143,7 @@ Third-party libraries used, as listed in `package.json`:
 | [fake-indexeddb](https://github.com/dumbmatter/fakeIndexedDB) | 6.2.8 | Apache-2.0 | In-memory IndexedDB for storage tests in Node |
 | [@playwright/test](https://playwright.dev) | 1.65.1 | Apache-2.0 | End-to-end tests |
 | [@axe-core/playwright](https://github.com/dequelabs/axe-core-npm) | 4.14.0 | MPL-2.0 | Accessibility checks in e2e tests |
+| [chrome-launcher](https://github.com/GoogleChrome/chrome-launcher) | 1.2.3 | Apache-2.0 | Starts isolated Chrome for Lighthouse |
 | [lighthouse](https://github.com/GoogleChrome/lighthouse) | 12.8.2 | Apache-2.0 | Performance and accessibility audits |
 | [eslint](https://eslint.org) | 10.15.0 | MIT | Linting |
 | [@eslint/js](https://eslint.org) | 10.0.1 | MIT | ESLint recommended rules |
@@ -164,7 +168,7 @@ The Fontsource packages are not dependencies; only the three font files were cop
 - Sounds: none recorded. Wind and the lantern chime are synthesised at runtime with the Web Audio API (`src/scene/sound.ts`), so there are no audio files to license.
 - Artwork: every scene shape (sky, moon, hills, fence, fog, candles, tombstones, lanterns, ghosts) is hand-written SVG in `src/scene/`. No icon set, illustration or image file is used.
 
-### Development tools used through Kiro (not app dependencies)
+### Development tools configured or used (not app dependencies)
 
 | Tool | Version | License | Purpose |
 |---|---|---|---|
@@ -174,9 +178,23 @@ The Fontsource packages are not dependencies; only the three font files were cop
 
 No library was added for add-from-URL, `.ics`, notifications or the AI helper: HTML extraction, the address checks, the iCalendar writer and parser, and the provider calls are written for this repo with Node built-ins (`node:dns`, `node:http`, `node:https`) and browser APIs (`fetch`, `Notification`, service workers).
 
+## Try one complete journey
+
+Choose **Skip intro** to explore the three labelled demo records. Revive the ghost, then mark it submitted: the scene changes to a lantern. Open the missed scholarship deadline and write an epitaph. Use **Hold a séance** to choose what needs attention, reflect on missed work and choose next week's priorities; apply a suggested action only after reviewing its confirmation. Switch to **List only** to do the same work without the scene.
+
+For your own data, choose **Clear demo**, then **Add deadline**, enter a name and local date/time, and select **Light the candle**. Reload: the deadline should still appear. After one online visit to the production preview, turn networking off and reload again; you can still add and edit deadlines. URL fetching and remote AI need networking. Export a JSON backup before clearing browser storage.
+
+## Architecture and boundaries
+
+One Preact application derives the scene and accessible list from the same pure deadline engine. UTC instants plus IANA zones handle deadlines; IndexedDB stores records and settings. The production service worker stores only the app shell. `/api/fetch-meta` is a read-only page-metadata fetcher with address and resource limits. The default Séance is deterministic and has no LLM dependency; optional providers share one adapter.
+
+There is no account, telemetry or cloud synchronization. Browser storage is not encrypted by this app. Optional provider keys stay in localStorage and are excluded from backups. Link capture sends the entered URL to the fetch endpoint; enabling a provider sends the relevant prompt to that provider. See the settings dialog and [capture design](.kiro/specs/capture-and-export/design.md) before enabling these options.
+
 ## Project status
 
-Spec phase done: steering, feature specs, hooks, custom agents and MCP config are in `.kiro/`. The deadline engine (`src/domain/`, pure state machine, timezones and DST, with fast-check property tests) and offline storage (`src/storage/`, IndexedDB with JSON backup and restore) are implemented and tested. The graveyard scene (SVG, GSAP motion with reduced-motion support, optional synthesised sound) and the screen-reader list view with keyboard navigation, add and edit form and detail dialog are implemented and persist to IndexedDB. Add from a link (with paste-text and manual fallbacks), `.ics` export, backup and restore, opt-in reminders and the optional AI helper (default None) are implemented and tested. The Séance weekly review (three skippable questions, a rule-based plan for the next 7 days, revive, bury and epitaph actions that each wait for a confirmation, and a history kept in backups) is implemented and tested, including a keyboard-only Playwright run. The first-visit intro with 3 labelled demo deadlines (skip, Escape, reduced-motion steps, revive and lantern invitations, keep or clear, replay) is implemented and tested, including a real-time Playwright run of the passive tour. Still to do: the polish phase (Lighthouse and axe audit script, design review, 50-item performance pass) and the submission docs. See `PLAN.md` for the build plan and `KIRO_USAGE.md` for how Kiro is used.
+Implemented locally: deadline states and DST handling, SVG scene, keyboard/list controls, first-visit tour, IndexedDB persistence and offline reload, URL capture with manual fallback, calendar export, backup/restore, opt-in reminders, and Séance planning. No runtime AI is required. `npm run lint`, production build, 470 unit/property tests and 23 Chromium browser tests passed on 17 November 2026. The UI was inspected at 1280×800 and 390×844; automated checks do not establish complete WCAG conformance.
+
+See [audit results](reports/summary.md), [design review](docs/design-reviews/2026-11-17.md), [Kiro usage and remaining execution checks](KIRO_USAGE.md) and [submission checklist](SUBMISSION_CHECKLIST.md). The [Devpost story](DEVPOST_STORY.md), [video shotlist](VIDEO_SHOTLIST.md), [blog](BLOG_DRAFT.md) and [social post](SOCIAL_POST.md) are unpublished drafts. No GitHub remote or hosted app is configured yet.
 
 Not verified yet, and needing a person or a deploy:
 
