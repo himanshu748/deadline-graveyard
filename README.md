@@ -79,7 +79,7 @@ Limits, stated plainly:
 - If you open the app for the first time inside a deadline's last hour, you get only the 1 hour reminder for it, not both.
 - If notifications are blocked or unsupported, the app says so and the candles still show what is due.
 
-The service worker (`public/sw.js`) only shows these notifications and focuses the app when you click one. It caches nothing and has no push subscription.
+The production service worker (`public/sw.js`) caches the built HTML, JavaScript, CSS, favicon and self-hosted fonts after the first online visit. The app can then reload at `/` offline and read or write deadlines in IndexedDB. Development mode does not cache the app. No API responses, external pages or user data enter this cache; there is no push subscription. Updates wait until old tabs close. Browser storage eviction or clearing site data removes the offline copy and deadlines, so download backups regularly.
 
 ### Optional AI helper
 

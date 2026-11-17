@@ -127,3 +127,10 @@ A purity check (R4.2) runs as a unit test that scans `src/domain/**/*.ts` (exclu
 - Unit and property tests in Node (Vitest `environment: 'node'`), 500 runs for P1 to P3, 1000 runs for P4 and each P5 case (unique, gap, overlap).
 - Storage tests use `fake-indexeddb` 6.2.8 (`import 'fake-indexeddb/auto'`, a fresh `new IDBFactory()` per test), listed in README > Pre-existing work.
 - Kiro IDE spec correctness (property extraction) will be run on this spec by the author in the IDE and compared with P1 to P6 in KIRO_USAGE.md.
+
+
+## Offline app shell (17 November 2026)
+
+IndexedDB persistence alone cannot make a page reload without a network. The production-only Vite `writeBundle` hook generates an exact static-asset manifest and a content-hashed cache name in `dist/sw.js`. The worker precaches that manifest at installation, serves only same-origin GET requests on the allowlist without queries, and deletes old app-shell caches on activation. Updates wait for old tabs to close. API responses, external pages and user records are never cached; records remain in IndexedDB. Initial registration needs HTTPS or localhost, an online first visit, and browser storage permission. Development has no shell cache.
+
+Confirmed against [Vite Plugin API](https://vite.dev/guide/api-plugin) and [MDN Using Service Workers](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers) on 17 November. The real Chromium regression in `e2e/lifecycle.spec.ts` turns networking off, reloads existing deadlines, creates another deadline offline and reloads again.

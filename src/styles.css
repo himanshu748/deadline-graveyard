@@ -877,3 +877,8 @@ dialog.panel.intro h2 {
 .intro-invite {
   margin-top: var(--space-2);
 }
+
+/* Reserve the initial scene area while IndexedDB opens, preventing the footer jumping. */
+main {
+  min-height: 100vh;
+}

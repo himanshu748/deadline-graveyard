@@ -409,10 +409,11 @@ export function App({
   // first-visit R2.5: every demo item goes, and nothing else.
   const clearDemoItems = async (): Promise<number> => {
     const ids = items.filter((i) => i.demo).map((i) => i.id);
-    setItems((list) => clearDemo(list));
-    if (ids.length > 0) announcer.current?.announce(`Cleared ${ids.length} demo deadline${ids.length === 1 ? '' : 's'}.`);
     try {
+      // Do not report success until IndexedDB commits: a reload may follow immediately.
       await Promise.all(ids.map((id) => repo?.remove(id)));
+      setItems((list) => clearDemo(list));
+      if (ids.length > 0) announcer.current?.announce(`Cleared ${ids.length} demo deadline${ids.length === 1 ? '' : 's'}.`);
     } catch {
       setSaveError('Could not remove the demo deadlines from this browser. They may come back after a reload.');
     }
@@ -421,11 +422,17 @@ export function App({
 
   // first-visit R1.5, R2.4: the flag is set however the intro ends, then focus goes to the scene.
   const endIntro = (clear: boolean) => {
-    setIntro(null);
-    focusAfterIntro.current = true;
-    void repo?.putSetting(SETTING_INTRO_SEEN, true).catch(() => {});
-    if (clear) void clearDemoItems();
-    else if (demoCount > 0) announcer.current?.announce('The demo deadlines stay, labelled Demo. Clear demo removes them.');
+    void (async () => {
+      try {
+        await repo?.putSetting(SETTING_INTRO_SEEN, true);
+      } catch {
+        setSaveError('Could not save your tour preference. The intro may return after a reload.');
+      }
+      if (clear) await clearDemoItems();
+      else if (demoCount > 0) announcer.current?.announce('The demo deadlines stay, labelled Demo. Clear demo removes them.');
+      focusAfterIntro.current = true;
+      setIntro(null);
+    })();
   };
 
   // first-visit R1.6, R2.6: the menu replays the intro with fresh demo items (the dialog has

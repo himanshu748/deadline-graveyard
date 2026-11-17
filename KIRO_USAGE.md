@@ -179,3 +179,6 @@ Fetched as raw Markdown (`.md` suffix) on 15 Nov 2026:
 ## Codex continuation — 17 November 2026
 
 After Kiro reported its monthly usage limit, the author continued this thread with Codex. Audit tooling completion, subsequent repairs, verification and submission drafts in this continuation are Codex work, not evidence of additional Kiro execution. The existing Kiro implementation and configuration remain intact.
+
+
+The offline reload regression exposed two gaps during the Codex continuation: the worker originally cached no app shell, and Clear demo reported completion before IndexedDB deletions committed. The production build now generates a versioned static cache; Clear demo waits for durable deletion, and ending the tour saves its preference before closing. A delayed-repository unit test checks the deletion race; real Chromium checks reload and new writes offline. Favicon, local font preloads, robots.txt and a reserved loading height address the audit's missing resource and layout-shift findings.

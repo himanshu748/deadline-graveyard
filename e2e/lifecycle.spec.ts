@@ -142,13 +142,15 @@ test('keyboard only through the scene: due order, submit from the panel, engrave
   await expect(listEntry(page, 'Old essay').locator('.epitaph')).toHaveText('Epitaph: Start a week early.');
 });
 
-// FOUND BY THIS TEST (16 Nov 2026): the reload fails with net::ERR_INTERNET_DISCONNECTED, because
-// public/sw.js caches nothing, so the app shell cannot load offline and deadline-engine R5.2 is not
-// met in a real browser. Marked fixme until the service worker caches the app shell.
-test.fixme('offline reload keeps every deadline (IndexedDB, app shell from the service worker)', async ({ page, context }) => {
+// R5.2: cached production shell plus real IndexedDB, without notification permission.
+test('offline reload keeps every deadline (IndexedDB, app shell from the service worker)', async ({ page, context }) => {
   await startEmpty(page);
   await addDeadline(page, 'Offline essay', 72);
   await addDeadline(page, 'Offline grant', 3);
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) await new Promise<void>((resolve) => navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), { once: true }));
+  });
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole('heading', { level: 1, name: 'Deadline Graveyard' })).toBeVisible();
@@ -156,6 +158,9 @@ test.fixme('offline reload keeps every deadline (IndexedDB, app shell from the s
   await expect(listEntry(page, 'Offline essay')).toHaveAttribute('data-status', 'active');
   await expect(listEntry(page, 'Offline grant')).toHaveAttribute('data-status', 'due-soon');
   await expect(page.locator('.scene-item')).toHaveCount(2);
+  await addDeadline(page, 'Written while offline', 48);
+  await page.reload();
+  await expect(page.locator('.list-view .entry')).toHaveCount(3);
   await context.setOffline(false);
 });
 

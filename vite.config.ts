@@ -1,6 +1,9 @@
 /// <reference types="vitest/config" />
 import { defineConfig, type Plugin } from 'vite';
 import preact from '@preact/preset-vite';
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { handleFetchMeta } from './src/capture/fetch-meta-server.ts';
 
 /**
@@ -37,8 +40,28 @@ function fetchMetaDevApi(): Plugin {
   };
 }
 
+// The manifest is generated from this build, so an offline reload never mixes asset versions.
+// Vite/Rollup writeBundle hook: https://vite.dev/guide/api-plugin#universal-hooks
+function offlineShell(): Plugin {
+  return {
+    name: 'deadline-graveyard:offline-shell',
+    apply: 'build',
+    writeBundle(options, bundle) {
+      const out = options.dir ?? 'dist';
+      const assets = ['/', ...Object.keys(bundle).map((name) => `/${name}`), '/favicon.svg',
+        ...readdirSync('public/fonts').filter((name) => name.endsWith('.woff2')).map((name) => `/fonts/${name}`)];
+      const template = readFileSync('public/sw.js', 'utf8');
+      const hash = createHash('sha256').update(template);
+      for (const url of assets) hash.update(readFileSync(path.join(out, url === '/' ? 'index.html' : url.slice(1))));
+      const source = template.replace('/* BUILD_CACHE */ null', JSON.stringify(`deadline-graveyard-shell-${hash.digest('hex').slice(0, 16)}`))
+        .replace('/* BUILD_ASSETS */ []', JSON.stringify(assets));
+      writeFileSync(path.join(out, 'sw.js'), source);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [preact(), fetchMetaDevApi()],
+  plugins: [preact(), fetchMetaDevApi(), offlineShell()],
   server: {
     port: 5173,
     strictPort: true,

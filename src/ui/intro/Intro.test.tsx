@@ -346,3 +346,26 @@ describe('Intro step clock (R1.2, R1.4)', () => {
     expect(() => button(root, 'Revive the ghost')).toThrow();
   });
 });
+
+
+describe('durable demo clearing', () => {
+  it('keeps demo visible until every deletion commits, then survives a new mount', async () => {
+    const repo = memoryRepository();
+    const { root } = await mount(repo);
+    await press(root, 'Skip intro');
+    const remove = repo.remove.bind(repo);
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    repo.remove = async (id) => { await pending; await remove(id); };
+    await press(root, 'Clear demo');
+    expect(root.querySelectorAll('.scene-item')).toHaveLength(3);
+    expect(await repo.list()).toHaveLength(3);
+    await act(async () => { release(); });
+    await flush();
+    expect(root.querySelectorAll('.scene-item')).toHaveLength(0);
+    expect(await repo.list()).toHaveLength(0);
+    render(null, root);
+    const reloaded = await mount(repo);
+    expect(reloaded.root.querySelectorAll('.scene-item')).toHaveLength(0);
+  });
+});
