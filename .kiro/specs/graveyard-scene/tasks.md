@@ -26,12 +26,12 @@
   - Unit test: no `AudioContext` is created before `enable()`.
   - _Requirements: R4.1, R4.2, R4.3, R4.4, R4.5_
 
-- [ ] 6. Performance pass
+- [x] 6. Performance pass
   - Measure with 50 generated items (labelled as test data, never shown to users). Pause off-screen loops if below 60 fps.
-  - Not started: scheduled for the tests and polish phase (FEAT-006) with the Lighthouse run.
+  - Measured 17 November by `scripts/measure-scene.mjs`: 50 synthetic items, roughly 60 fps at 1280×800 and 390×844 in local Chromium, p95 frame interval 16.7 ms. See `docs/design-reviews/2026-11-17/measurements.json`; no physical-device guarantee.
   - _Requirements: R5.3_
 
 - [ ] 7. Design review
   - Run the `design-review` agent; fix findings; commit the dated review in `docs/design-reviews/`.
-  - Not started: scheduled for the polish phase (FEAT-006).
+  - Manual Codex review and screenshots completed in `docs/design-reviews/2026-11-17.md`. This checkbox remains open because the specifically requested Kiro custom-agent invocation has not run (Kiro quota interruption).
   - _Requirements: R3.4, R5.1_

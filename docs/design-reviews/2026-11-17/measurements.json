@@ -1,0 +1,72 @@
+{
+  "date": "2026-11-17T04:57:20.925Z",
+  "browser": "159.0.8154.6",
+  "loadAverage": [
+    9.77880859375,
+    9.83935546875,
+    8.09423828125
+  ],
+  "note": "Headless local Chromium, 5-second requestAnimationFrame sample, 50 synthetic demo records imported through the real restore UI. No CPU throttle; not a field measurement.",
+  "results": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800,
+      "fonts": [
+        {
+          "family": "IM Fell English",
+          "status": "loaded"
+        },
+        {
+          "family": "Atkinson Hyperlegible Next",
+          "status": "loaded"
+        },
+        {
+          "family": "Atkinson Hyperlegible Next",
+          "status": "loaded"
+        }
+      ],
+      "overflow": false,
+      "violations": [],
+      "reducedFlameStatic": true,
+      "fixtureItems": 50,
+      "timing": {
+        "durationMs": 5016.499999999999,
+        "frames": 301,
+        "fps": 60.00199342170837,
+        "p95FrameMs": 16.700000000000728,
+        "over33ms": 0
+      }
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "fonts": [
+        {
+          "family": "IM Fell English",
+          "status": "loaded"
+        },
+        {
+          "family": "Atkinson Hyperlegible Next",
+          "status": "loaded"
+        },
+        {
+          "family": "Atkinson Hyperlegible Next",
+          "status": "loaded"
+        }
+      ],
+      "overflow": false,
+      "violations": [],
+      "reducedFlameStatic": true,
+      "fixtureItems": 50,
+      "timing": {
+        "durationMs": 5016.4,
+        "frames": 301,
+        "fps": 60.00318953831433,
+        "p95FrameMs": 16.700000000000728,
+        "over33ms": 0
+      }
+    }
+  ]
+}
