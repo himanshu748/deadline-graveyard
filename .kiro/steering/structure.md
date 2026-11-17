@@ -25,10 +25,12 @@ deadline-graveyard/
   public/                self-hosted OFL fonts, icons
   tests/                 unit and property tests that are not colocated
     hooks/               unit tests for scripts/hooks/lib.mjs
+    audit/               unit tests for scripts/audit-lib.mjs
   e2e/                   Playwright + axe specs
   scripts/
     hooks/               Node scripts behind .kiro/hooks (run standalone too)
-    audit.mjs            axe + Lighthouse against dist/ (added in the polish phase)
+    audit.mjs            npm run audit:a11y: Lighthouse + axe against dist/ (I/O only)
+    audit-lib.mjs        pure scoring and summary.md rendering for audit.mjs
   reports/               summary.md committed; reports/raw/ gitignored
   docs/design-reviews/   dated reviews written by the design-review agent
 ```

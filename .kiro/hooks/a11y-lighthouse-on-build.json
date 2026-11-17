@@ -3,7 +3,7 @@
   "hooks": [
     {
       "name": "a11y-lighthouse-on-build",
-      "description": "After the agent runs npm run build, run scripts/audit.mjs (axe via Playwright and Lighthouse against dist/, results in reports/). Until audit.mjs exists it prints a notice and produces no scores. Script: scripts/hooks/a11y-lighthouse-on-build.mjs.",
+      "description": "After the agent runs npm run build, run scripts/audit.mjs (Lighthouse mobile and desktop plus axe via Playwright in normal and reduced motion, against dist/) and print reports/summary.md for the agent. Exit 1 with the failure output if the audit errors or axe finds a serious or critical violation. Script: scripts/hooks/a11y-lighthouse-on-build.mjs.",
       "trigger": "PostToolUse",
       "matcher": "shell",
       "action": {

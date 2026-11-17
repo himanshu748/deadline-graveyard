@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 // Kiro hook: .kiro/hooks/a11y-lighthouse-on-build.json (PostToolUse on the shell tool).
-// After the agent runs `npm run build`, runs scripts/audit.mjs (axe + Lighthouse
-// against dist/, writes reports/). Other commands exit 0 immediately.
-//
-// scripts/audit.mjs is added in the polish phase. Until it exists this hook
-// prints a notice and reports no scores; it never invents numbers.
+// After the agent runs `npm run build`, runs scripts/audit.mjs (axe + Lighthouse against dist/,
+// writes reports/raw/*.json and reports/summary.md) and prints reports/summary.md to STDOUT so the
+// agent reads the measured scores. Other commands exit 0 immediately. It never invents numbers:
+// if the audit fails, the agent gets the failure output and whatever summary the audit wrote.
 //
 // Standalone use:
 //   echo '{"tool_name":"execute_bash","tool_input":{"command":"npm run build"}}' \
 //     | node scripts/hooks/a11y-lighthouse-on-build.mjs
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { isNpmBuild, parseEvent, shellCommandOf, toolFailed } from './lib.mjs';
 import { readStdin, repoRoot, run, tail } from './io.mjs';
@@ -28,18 +27,23 @@ if (toolFailed(event)) {
 
 const audit = path.join(root, 'scripts', 'audit.mjs');
 if (!existsSync(audit)) {
-  process.stdout.write(
-    'a11y-lighthouse-on-build: scripts/audit.mjs does not exist yet (planned for the polish phase). ' +
-      'No axe or Lighthouse scores were produced.\n',
-  );
+  process.stdout.write('a11y-lighthouse-on-build: scripts/audit.mjs is missing. No axe or Lighthouse scores were produced.\n');
   process.exit(0);
 }
 
+const summaryPath = path.join(root, 'reports', 'summary.md');
+const startedAt = Date.now();
 const r = run(process.execPath, [audit], root);
-const output = `${r.stdout}\n${r.stderr}`;
+// Only a summary written by this run counts; an older file would show stale numbers.
+const fresh = existsSync(summaryPath) && statSync(summaryPath).mtimeMs >= startedAt;
+const summary = fresh ? readFileSync(summaryPath, 'utf8') : '';
+
 if (r.code === 0) {
-  process.stdout.write(`a11y-lighthouse-on-build: audit finished. See reports/summary.md.\n${tail(output, 20)}\n`);
+  process.stdout.write(`a11y-lighthouse-on-build: audit finished (reports/summary.md):\n\n${summary}\n`);
   process.exit(0);
 }
-process.stderr.write(`a11y-lighthouse-on-build: audit failed (exit ${r.code}).\n${tail(output, 40)}\n`);
+process.stderr.write(
+  `a11y-lighthouse-on-build: audit failed (exit ${r.code}).\n${tail(r.stderr, 40)}\n` +
+    (summary ? `\nreports/summary.md from this run:\n\n${summary}\n` : 'No summary was written by this run.\n'),
+);
 process.exit(1);

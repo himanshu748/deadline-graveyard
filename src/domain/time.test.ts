@@ -86,7 +86,8 @@ describe('formatForDisplay', () => {
   it('omits the source zone when the zones match', () => {
     const shown = formatForDisplay(due, 'America/Los_Angeles', 'America/Los_Angeles', 'en-US');
     expect(shown.source).toBeUndefined();
-    expect(shown.primary).toContain('02:00');
+    // ICU versions differ on padding the en-US hour; the instant must still be 2 PM.
+    expect(shown.primary).toMatch(/\b0?2:00/);
     expect(shown.primary).toContain('PM');
   });
 });
