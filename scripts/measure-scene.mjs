@@ -11,7 +11,10 @@ mkdirSync(dir, { recursive: true });
 const browser = await chromium.launch();
 const results = [];
 try {
-  for (const [name, width, height] of [['desktop',1280,800],['mobile',390,844]]) {
+  for (const { name, width, height } of [
+    { name: 'desktop', width: 1280, height: 800 },
+    { name: 'mobile', width: 390, height: 844 },
+  ]) {
     const context = await browser.newContext({ viewport: { width, height } });
     const page = await context.newPage();
     await page.goto(url);
@@ -45,7 +48,12 @@ try {
     await page.locator('.scene-wrap').scrollIntoViewIfNeeded();
     await page.waitForTimeout(1000);
     const timing=await page.evaluate(()=>new Promise(resolve=>{
-      let first,previous; const frames=[];
+      let first;
+      /** @type {number | undefined} */
+      let previous;
+      /** @type {number[]} */
+      const frames=[];
+      /** @param {number} t */
       function tick(t){first??=t;if(previous!==undefined) frames.push(t-previous);previous=t;
         if(t-first<5000){requestAnimationFrame(tick);return;}
         const sorted=[...frames].sort((a,b)=>a-b);
