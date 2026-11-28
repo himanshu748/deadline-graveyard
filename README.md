@@ -26,7 +26,9 @@ Students and builders who track many overlapping deadlines (hackathons, coursewo
 
 ## Working app URL
 
-Pending public deployment. To publish the browser demo on GitHub Pages, select **GitHub Actions** in **Settings → Pages**, then run **Publish browser demo** from `main`. The Pages build supports the tour, deadline lifecycle, Séance, calendar export and offline reload. Use the paste or manual entry path for event details on this static host; automatic link lookup requires the separate `/api/fetch-meta` function.
+**[Open Deadline Graveyard](https://himanshu748.github.io/deadline-graveyard/)** · [Watch the 0:50 walkthrough](https://youtu.be/vlgeK36kLIw) · [Judge instructions](docs/DEVPOST.md)
+
+The Pages build supports the tour, deadline lifecycle, Séance, calendar export and offline reload. Use paste or manual entry for event details on this static host. Automatic link metadata lookup uses the separate `/api/fetch-meta` function.
 
 ## How to run
 

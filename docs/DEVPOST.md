@@ -17,7 +17,7 @@ The static Pages build supports manual entry and pasted event details. Automatic
 
 Kiro CLI 3.2.1 with its V3 harness, driven over ACP by T3 Code, produced the plan, scaffold and committed Kiro configuration. The [deadline engine requirements](../.kiro/specs/deadline-engine/requirements.md), [graveyard scene design](../.kiro/specs/graveyard-scene/design.md) and [accessibility specs](../.kiro/specs/accessible-list-view/) document the work before implementation. [Domain steering](../.kiro/steering/deadline-domain.md) records the day-boundary and DST rules.
 
-The team validated and listed both custom agent definitions with the CLI. The project tested [commit guard](../.kiro/hooks/commit-guard.json) behavior against temporary repositories, and manually exercised the hook scripts. Automatic hook firing in the ACP session and execution of the two custom-agent reviews remain unverified. The dated design review was produced during Codex continuation. [Kiro usage evidence](../KIRO_USAGE.md) · [Design review](design-reviews/2026-11-17.md).
+Kiro CLI validated and listed both custom agent definitions. The project tested [commit guard](../.kiro/hooks/commit-guard.json) behavior against temporary repositories, and manually exercised the hook scripts. Automatic hook firing in the ACP session and execution of the two custom-agent reviews remain unverified. The dated design review was produced during Codex continuation. [Kiro usage evidence](../KIRO_USAGE.md) · [Design review](design-reviews/2026-11-17.md).
 
 The spec's six correctness properties have corresponding fast-check tests. For example, [status properties](../src/domain/status.property.test.ts) cover the due-soon boundary around actual DST transitions and verify that terminal states remain terminal. The interactive IDE Correctness feature was not run.
 
@@ -27,8 +27,8 @@ The spec's six correctness properties have corresponding fast-check tests. For e
 | --- | --- |
 | Category | Costume Contest |
 | Public GitHub repository | [Source](https://github.com/himanshu748/deadline-graveyard), MIT license, and committed root `.kiro/` |
-| Working application | Use the verified public URL after running the **Publish browser demo** workflow from `main` |
-| Video | [YouTube walkthrough](https://youtu.be/vlgeK36kLIw) (0:50). The [recorded file](demo-video.mp4) is also in this repository. |
+| Working application | [Live GitHub Pages demo](https://himanshu748.github.io/deadline-graveyard/). No account or API key is needed for the default app. |
+| Video | [Public YouTube walkthrough](https://youtu.be/vlgeK36kLIw) (0:50). The [recorded file](demo-video.mp4) is also in this repository. |
 | Testing instructions | Use the four browser steps above |
 | Pre-existing work | [Dependency and asset disclosures](../README.md#pre-existing-work) |
 | Eligibility and survey responses | Entrant completes the personal fields and any bonus declarations |
