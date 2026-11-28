@@ -26,7 +26,7 @@ Students and builders who track many overlapping deadlines (hackathons, coursewo
 
 ## Working app URL
 
-TODO after Vercel deploy. The app will be hosted on the Vercel free tier only after the author approves the deploy.
+Pending public deployment. To publish the browser demo on GitHub Pages, select **GitHub Actions** in **Settings → Pages**, then run **Publish browser demo** from `main`. The Pages build supports the tour, deadline lifecycle, Séance, calendar export and offline reload. Use the paste or manual entry path for event details on this static host; automatic link lookup requires the separate `/api/fetch-meta` function.
 
 ## How to run
 

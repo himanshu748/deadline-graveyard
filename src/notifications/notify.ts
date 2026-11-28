@@ -12,7 +12,7 @@ export interface Notifier {
   show(title: string, body: string, tag: string): Promise<void>;
 }
 
-export const SW_URL = '/sw.js';
+export const SW_URL = `${import.meta.env.BASE_URL}sw.js`;
 
 function hasNotification(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window;
