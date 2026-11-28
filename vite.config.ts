@@ -52,7 +52,7 @@ function offlineShell(): Plugin {
     },
     writeBundle(options, bundle) {
       const out = options.dir ?? 'dist';
-      const files = ['index.html', ...Object.keys(bundle), 'favicon.svg',
+      const files = ['index.html', ...Object.keys(bundle).filter((name) => name !== 'index.html'), 'favicon.svg',
         ...readdirSync('public/fonts').filter((name) => name.endsWith('.woff2')).map((name) => `fonts/${name}`)];
       const assets = files.map((file) => file === 'index.html' ? base : `${base}${file}`);
       const template = readFileSync('public/sw.js', 'utf8');
