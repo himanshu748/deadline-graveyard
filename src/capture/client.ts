@@ -44,7 +44,7 @@ export function parseCaptureReply(data: unknown, fallbackSource: string): Captur
 }
 
 /** R1.1: GET /api/fetch-meta for a URL that already passed the syntax check (R1.3). */
-export async function fetchPageMeta(rawUrl: string, fetchImpl: typeof fetch = fetch, base = '/api/fetch-meta'): Promise<CaptureResult> {
+export async function fetchPageMeta(rawUrl: string, fetchImpl: typeof fetch = fetch, base = `${import.meta.env.BASE_URL}api/fetch-meta`): Promise<CaptureResult> {
   const checked = checkUrlSyntax(rawUrl);
   if (!checked.ok) return { ok: false, error: 'invalid-url' };
   let response: Response;

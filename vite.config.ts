@@ -43,16 +43,21 @@ function fetchMetaDevApi(): Plugin {
 // The manifest is generated from this build, so an offline reload never mixes asset versions.
 // Vite/Rollup writeBundle hook: https://vite.dev/guide/api-plugin#universal-hooks
 function offlineShell(): Plugin {
+  let base: string;
   return {
     name: 'deadline-graveyard:offline-shell',
     apply: 'build',
+    configResolved(config) {
+      base = config.base;
+    },
     writeBundle(options, bundle) {
       const out = options.dir ?? 'dist';
-      const assets = ['/', ...Object.keys(bundle).map((name) => `/${name}`), '/favicon.svg',
-        ...readdirSync('public/fonts').filter((name) => name.endsWith('.woff2')).map((name) => `/fonts/${name}`)];
+      const files = ['index.html', ...Object.keys(bundle).filter((name) => name !== 'index.html'), 'favicon.svg',
+        ...readdirSync('public/fonts').filter((name) => name.endsWith('.woff2')).map((name) => `fonts/${name}`)];
+      const assets = files.map((file) => file === 'index.html' ? base : `${base}${file}`);
       const template = readFileSync('public/sw.js', 'utf8');
-      const hash = createHash('sha256').update(template);
-      for (const url of assets) hash.update(readFileSync(path.join(out, url === '/' ? 'index.html' : url.slice(1))));
+      const hash = createHash('sha256').update(template).update(base);
+      for (const file of files) hash.update(readFileSync(path.join(out, file)));
       const source = template.replace('/* BUILD_CACHE */ null', JSON.stringify(`deadline-graveyard-shell-${hash.digest('hex').slice(0, 16)}`))
         .replace('/* BUILD_ASSETS */ []', JSON.stringify(assets));
       writeFileSync(path.join(out, 'sw.js'), source);

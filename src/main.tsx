@@ -10,7 +10,7 @@ render(<App />, root);
 
 // Cache the built shell without asking for notification permission. Only HTTPS/localhost supports SW.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  void navigator.serviceWorker.register('/sw.js').catch(() => {
+  void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
     const notice = document.createElement('p');
     notice.className = 'notice';
     notice.setAttribute('role', 'status');
